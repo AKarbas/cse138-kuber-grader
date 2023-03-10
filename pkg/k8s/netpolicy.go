@@ -24,6 +24,7 @@ func (c *Client) CreateNetPolicy(ns, name string, labels map[string]string) erro
 	c.LazyInit()
 	kind := "NetworkPolicy"
 	apiVersion := "networking.k8s.io/v1"
+	hostCidr := "192.168.0.0/16"
 	req := &v1.NetworkPolicyApplyConfiguration{
 		TypeMetaApplyConfiguration: applymetav1.TypeMetaApplyConfiguration{
 			Kind:       &kind,
@@ -44,6 +45,11 @@ func (c *Client) CreateNetPolicy(ns, name string, labels map[string]string) erro
 						{
 							PodSelector: &applymetav1.LabelSelectorApplyConfiguration{
 								MatchLabels: labels,
+							},
+						},
+						{
+							IPBlock: &v1.IPBlockApplyConfiguration{
+								CIDR: &hostCidr,
 							},
 						},
 					},
