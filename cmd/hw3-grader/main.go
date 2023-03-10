@@ -16,6 +16,7 @@ func main() {
 	log := logrus.New().WithFields(logrus.Fields{
 		"group": groupName,
 	})
+	log.Info("Graded using github.com/AKarbas/cse138-kuber-grader")
 	twoNodePerBatch := kvs3.TestConfig{
 		Registry:  "localhost:32000",
 		ImageTag:  "cse138-hw3-v1.0",
