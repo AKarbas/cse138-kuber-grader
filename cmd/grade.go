@@ -41,7 +41,7 @@ func main() {
 		kvs3.PartitionedViewChangeMaxScore,
 		kvs3.AvailabilityMaxScore,
 	}
-	weights := []int{1, 3, 2, 3, 3}
+	weights := []int{3, 3, 2, 1, 3}
 	tests := []kvs3.TestFunc{
 		kvs3.BasicKVTest,
 		kvs3.PartitionedTotalOrderTest,
