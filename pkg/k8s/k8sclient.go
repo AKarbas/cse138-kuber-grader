@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -12,6 +13,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
 )
+
+const kPodPort = "8000"
 
 type Client struct {
 	*kubernetes.Clientset
@@ -43,33 +46,72 @@ func (c *Client) LazyInit() {
 	}
 }
 
-func (c *Client) ListPods(ns string, labels string) (*v1.PodList, error) {
-	c.LazyInit()
-	return c.Clientset.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{LabelSelector: labels})
+func GroupLabels(groupName string) map[string]string {
+	res := make(map[string]string)
+	res["group"] = groupName
+	return res
 }
 
-func (c *Client) StartPods(ns, groupName, image string, groups, perGroup int) error {
-	podPort := "8000"
+func BatchLabels(groupName string, batch int) map[string]string {
+	res := GroupLabels(groupName)
+	res["batch"] = fmt.Sprintf("%d", batch)
+	return res
+}
+
+func PodLabels(groupName string, batch, idx int) map[string]string {
+	res := BatchLabels(groupName, batch)
+	res["index"] = fmt.Sprintf("%d", idx)
+	return res
+}
+
+func condenseLabelsMap(lm map[string]string) string {
+	res := strings.Builder{}
+	for k, v := range lm {
+		if res.Len() > 0 {
+			res.WriteString(",")
+		}
+		res.WriteString(k)
+		res.WriteString("=")
+		res.WriteString(v)
+	}
+	return res.String()
+}
+
+func (c *Client) ListPods(ns string, labels map[string]string) (*v1.PodList, error) {
+	c.LazyInit()
+	return c.Clientset.CoreV1().Pods(ns).List(context.TODO(), metav1.ListOptions{
+		LabelSelector: condenseLabelsMap(labels),
+	})
+}
+
+func (c *Client) ListPodAddresses(ns string, labels map[string]string) ([]string, error) {
+	pods, err := c.ListPods(ns, labels)
+	if err != nil {
+		return nil, err
+	}
+	var res []string
+	for _, pod := range pods.Items {
+		res = append(res, fmt.Sprintf("%s:%s", pod.Status.PodIP, kPodPort))
+	}
+	return res, nil
+}
+
+func (c *Client) StartPods(ns, groupName, image string, batches, perBatch int) error {
 	c.LazyInit()
 	errChan := make(chan error, 1)
 	defer close(errChan)
-	for i := 1; i <= groups; i++ {
-		for j := 1; j <= perGroup; j++ {
+	for i := 1; i <= batches; i++ {
+		for j := 1; j <= perBatch; j++ {
 			go func(i, j int) {
-				podLabels := make(map[string]string)
-				podLabels["group"] = groupName
-				podLabels["pod-group"] = fmt.Sprintf("%d", i)
-				podLabels["pod-index"] = fmt.Sprintf("%d", j)
-
 				req := &v1.Pod{
 					TypeMeta: metav1.TypeMeta{
 						Kind:       "Pod",
 						APIVersion: "v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      fmt.Sprintf("%s-g%d-p%d", groupName, i, j),
+						Name:      fmt.Sprintf("%s-b%d-p%d", groupName, i, j),
 						Namespace: ns,
-						Labels:    podLabels,
+						Labels:    PodLabels(groupName, i, ((i-1)*batches)+j),
 					},
 					Spec: v1.PodSpec{
 						RestartPolicy: "Never",
@@ -88,7 +130,7 @@ func (c *Client) StartPods(ns, groupName, image string, groups, perGroup int) er
 									},
 									{
 										Name:  "ADDRESS",
-										Value: fmt.Sprintf("$(POD_IP):%s", podPort),
+										Value: fmt.Sprintf("$(POD_IP):%s", kPodPort),
 									},
 								},
 							},
@@ -103,7 +145,8 @@ func (c *Client) StartPods(ns, groupName, image string, groups, perGroup int) er
 	}
 
 	var err error
-	for e := range errChan {
+	for i := 0; i < batches*perBatch; i++ {
+		e := <-errChan
 		if e != nil {
 			err = e
 		}
