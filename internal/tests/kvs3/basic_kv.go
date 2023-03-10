@@ -3,6 +3,7 @@ package kvs3
 import (
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/sirupsen/logrus"
 	"k8s.io/utils/strings/slices"
@@ -60,6 +61,8 @@ func BasicKVTest(conf TestConfig) int {
 		return score
 	}
 	defer k8sClient.DeletePods(conf.Namespace, k8s.GroupLabels(conf.GroupName)) // cleanup
+
+	time.Sleep(10 * time.Second)
 
 	addresses, err := k8sClient.ListPodAddresses(conf.Namespace, k8s.GroupLabels(conf.GroupName))
 	if err != nil {
