@@ -6,9 +6,11 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/client-go/applyconfigurations/core/v1"
+	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-const kPodPort = "8000"
+const kPodPort = "8080"
 
 func (c *Client) ListPods(ns string, labels map[string]string) (*v1.PodList, error) {
 	c.LazyInit()
@@ -59,34 +61,42 @@ func (c *Client) CreatePods(ns, groupName, image string, batches, perBatch int) 
 
 func (c *Client) CreatePod(ns, name, image string, labels map[string]string) error {
 	c.LazyInit()
-	req := &v1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Pod",
-			APIVersion: "v1",
+	kind := "Pod"
+	apiVersion := "v1"
+	restartPolicy := "Never"
+	containerName := "main"
+	podIpEnvName := "POD_IP"
+	podIpFieldPath := "status.podIP"
+	addressEnvName := "ADDRESS"
+	addressEnvValue := fmt.Sprintf("$(POD_IP):%s", kPodPort)
+	req := &corev1.PodApplyConfiguration{
+		TypeMetaApplyConfiguration: applymetav1.TypeMetaApplyConfiguration{
+			Kind:       &kind,
+			APIVersion: &apiVersion,
 		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
-			Namespace: ns,
+		ObjectMetaApplyConfiguration: &applymetav1.ObjectMetaApplyConfiguration{
+			Name:      &name,
+			Namespace: &ns,
 			Labels:    labels,
 		},
-		Spec: v1.PodSpec{
-			RestartPolicy: "Never",
-			Containers: []v1.Container{
+		Spec: &corev1.PodSpecApplyConfiguration{
+			RestartPolicy: (*v1.RestartPolicy)(&restartPolicy),
+			Containers: []corev1.ContainerApplyConfiguration{
 				{
-					Name:  "main",
-					Image: image,
-					Env: []v1.EnvVar{
+					Name:  &containerName,
+					Image: &image,
+					Env: []corev1.EnvVarApplyConfiguration{
 						{
-							Name: "POD_IP",
-							ValueFrom: &v1.EnvVarSource{
-								FieldRef: &v1.ObjectFieldSelector{
-									FieldPath: "status.podIP",
+							Name: &podIpEnvName,
+							ValueFrom: &corev1.EnvVarSourceApplyConfiguration{
+								FieldRef: &corev1.ObjectFieldSelectorApplyConfiguration{
+									FieldPath: &podIpFieldPath,
 								},
 							},
 						},
 						{
-							Name:  "ADDRESS",
-							Value: fmt.Sprintf("$(POD_IP):%s", kPodPort),
+							Name:  &addressEnvName,
+							Value: &addressEnvValue,
 						},
 					},
 				},
@@ -94,7 +104,7 @@ func (c *Client) CreatePod(ns, name, image string, labels map[string]string) err
 		},
 	}
 
-	_, err := c.Clientset.CoreV1().Pods(ns).Create(context.TODO(), req, metav1.CreateOptions{})
+	_, err := c.Clientset.CoreV1().Pods(ns).Apply(context.TODO(), req, metav1.ApplyOptions{})
 	return err
 }
 
