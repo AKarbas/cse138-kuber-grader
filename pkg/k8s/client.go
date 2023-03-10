@@ -9,6 +9,8 @@ import (
 	"k8s.io/client-go/util/homedir"
 )
 
+const kFieldManager = "amin"
+
 type Client struct {
 	*kubernetes.Clientset
 }

@@ -53,7 +53,11 @@ func (c *Client) CreateNetPolicy(ns, name string, labels map[string]string) erro
 		},
 	}
 
-	_, err := c.NetworkingV1().NetworkPolicies(ns).Apply(context.TODO(), req, metav1.ApplyOptions{})
+	applyOpts := metav1.ApplyOptions{
+		FieldManager: kFieldManager,
+		Force:        true,
+	}
+	_, err := c.NetworkingV1().NetworkPolicies(ns).Apply(context.TODO(), req, applyOpts)
 	return err
 }
 

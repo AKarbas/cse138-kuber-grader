@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,13 +22,31 @@ func (c *Client) ListPods(ns string, labels map[string]string) (*v1.PodList, err
 
 func (c *Client) ListPodAddresses(ns string, labels map[string]string) ([]string, error) {
 	c.LazyInit()
-	pods, err := c.ListPods(ns, labels)
-	if err != nil {
-		return nil, err
-	}
+	deadline := time.NewTimer(20 * time.Second)
+	defer deadline.Stop()
+
 	var res []string
-	for _, pod := range pods.Items {
-		res = append(res, fmt.Sprintf("%s:%s", pod.Status.PodIP, kPodPort))
+	for true {
+		select {
+		case <-deadline.C:
+			return nil, fmt.Errorf("deadline for pods ready exceeded; ns=%s; labels=%v", ns, labels)
+		default: // Fall through
+		}
+		pods, err := c.ListPods(ns, labels)
+		if err != nil {
+			return nil, err
+		}
+		ready := true
+		for _, pod := range pods.Items {
+			if pod.Status.Phase != v1.PodRunning {
+				ready = false
+				break
+			}
+			res = append(res, fmt.Sprintf("%s:%s", pod.Status.PodIP, kPodPort))
+		}
+		if ready {
+			break
+		}
 	}
 	return res, nil
 }
@@ -104,7 +123,11 @@ func (c *Client) CreatePod(ns, name, image string, labels map[string]string) err
 		},
 	}
 
-	_, err := c.Clientset.CoreV1().Pods(ns).Apply(context.TODO(), req, metav1.ApplyOptions{})
+	applyOpts := metav1.ApplyOptions{
+		FieldManager: kFieldManager,
+		Force:        true,
+	}
+	_, err := c.Clientset.CoreV1().Pods(ns).Apply(context.TODO(), req, applyOpts)
 	return err
 }
 
