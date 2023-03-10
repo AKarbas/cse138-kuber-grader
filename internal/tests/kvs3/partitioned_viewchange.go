@@ -121,6 +121,8 @@ func PartitionedViewChangeTest(conf TestConfig) int {
 
 	k8sClient.DeleteNetPolicies(conf.Namespace, k8s.GroupLabels(conf.GroupName))
 
+	time.Sleep(11 * time.Second)
+
 	statusCode, err = kvs3client.PutView(batches[0][0], firstAndThird)
 	if err != nil {
 		log.Errorf("failed to put view: %v", err)
