@@ -65,7 +65,7 @@ func main() {
 			log.WithFields(logrus.Fields{
 				"expected": maxes[idx],
 				"got":      scores[idx],
-			}).Error("test %d did not finish with the full score, skipping next tests.", idx+1)
+			}).Errorf("test %d did not finish with the full score, skipping next tests.", idx+1)
 			break
 		}
 	}
