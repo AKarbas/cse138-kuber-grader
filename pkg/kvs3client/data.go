@@ -137,7 +137,7 @@ func DeleteKey(dest, key string, cm CausalMetadata) (CausalMetadata, int, error)
 	return res.CM, resp.StatusCode, nil
 }
 
-func GetKeyList(dest string, cm CausalMetadata) (CausalMetadata, int, error) {
+func GetKeyList(dest string, cm CausalMetadata) (int, []string, CausalMetadata, int, error) {
 	if cm == nil {
 		cm = kEmptyCM
 	}
@@ -154,15 +154,15 @@ func GetKeyList(dest string, cm CausalMetadata) (CausalMetadata, int, error) {
 
 	resp, err := dataHttpClient.Do(req)
 	if err != nil {
-		return nil, 0, err
+		return 0, nil, nil, 0, err
 	}
 
 	res := KeyListBody{}
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	resp.Body.Close()
 	if err != nil {
-		return nil, 0, err
+		return 0, nil, nil, 0, err
 	}
 
-	return res.CM, resp.StatusCode, nil
+	return res.Count, res.Keys, res.CM, resp.StatusCode, nil
 }

@@ -26,7 +26,7 @@ func (c *Client) ListPodAddresses(ns string, labels map[string]string) ([]string
 	defer deadline.Stop()
 
 	var res []string
-	for true {
+	for {
 		select {
 		case <-deadline.C:
 			return nil, fmt.Errorf("deadline for pods ready exceeded; ns=%s; labels=%v", ns, labels)
@@ -145,4 +145,25 @@ func (c *Client) DeletePods(ns string, labels map[string]string) error {
 		}
 	}
 	return nil
+}
+
+func (c *Client) AwaitDeletion(ns string, labels map[string]string) error {
+	deadline := time.NewTimer(20 * time.Second)
+	defer deadline.Stop()
+
+	for {
+		select {
+		case <-deadline.C:
+			return fmt.Errorf("deadline for pod deletion exceeded; ns=%s; labels=%v", ns, labels)
+		default: // Fall through
+		}
+
+		pods, err := c.ListPods(ns, labels)
+		if err != nil {
+			return err
+		}
+		if len(pods.Items) == 0 {
+			return nil
+		}
+	}
 }
