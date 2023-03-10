@@ -1,7 +1,6 @@
 package kvs3
 
 import (
-	"fmt"
 	"sort"
 	"time"
 
@@ -16,14 +15,6 @@ const (
 	kBasicKVMaxScore = 80
 )
 
-func key(i int) string {
-	return fmt.Sprintf("Key-%d", i)
-}
-
-func val(i, j int) string {
-	return fmt.Sprintf("Val-%d-%d", i, j)
-}
-
 func BasicKVTest(conf TestConfig) int {
 	log := logrus.New().WithFields(logrus.Fields{
 		"test":     "BasicKeyVal",
@@ -32,7 +23,7 @@ func BasicKVTest(conf TestConfig) int {
 		"numKeys":  conf.NumKeys,
 	})
 	log.Infof("this test runs on a healthy network and checks "+
-		"if simple view and data operations are successful"+
+		"if simple view and data operations are successful. "+
 		"max score in test: %d", kBasicKVMaxScore)
 	k8sClient := k8s.Client{}
 
@@ -49,6 +40,10 @@ func BasicKVTest(conf TestConfig) int {
 		log.Errorf("failed when awaiting deletion of pods: %v", err)
 		return score
 	}
+	if err := k8sClient.DeleteNetPolicies(conf.Namespace, k8s.GroupLabels(conf.GroupName)); err != nil {
+		log.Errorf("failed to delete network policies: %v", err)
+		return score
+	}
 
 	if err := k8sClient.CreatePods(
 		conf.Namespace,
@@ -60,7 +55,10 @@ func BasicKVTest(conf TestConfig) int {
 		log.Errorf("could not create nodes: %v", err)
 		return score
 	}
-	defer k8sClient.DeletePods(conf.Namespace, k8s.GroupLabels(conf.GroupName)) // cleanup
+	defer func() {
+		k8sClient.DeletePods(conf.Namespace, k8s.GroupLabels(conf.GroupName))
+		k8sClient.AwaitDeletion(conf.Namespace, k8s.GroupLabels(conf.GroupName))
+	}() // cleanup
 
 	time.Sleep(10 * time.Second)
 
@@ -237,7 +235,9 @@ func BasicKVTest(conf TestConfig) int {
 	score += 10
 	log.Info("score +10 - third gets successful")
 
-	keyCount, keys, cm, statusCode, err := kvs3client.GetKeyList(addresses[0], cm)
+	var keyCount int
+	var keys []string
+	keyCount, keys, cm, statusCode, err = kvs3client.GetKeyList(addresses[0], cm)
 	if err != nil {
 		log.Errorf("failed to get key list: %v", err)
 		return score

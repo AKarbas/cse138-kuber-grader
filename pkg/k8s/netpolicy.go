@@ -12,7 +12,7 @@ import (
 
 func (c *Client) IsolateBatch(ns string, groupName string, batch int) error {
 	c.LazyInit()
-	return c.CreateNetPolicy(ns, fmt.Sprintf("%s-g%d", groupName, batch), GroupLabels(groupName))
+	return c.CreateNetPolicy(ns, fmt.Sprintf("%s-g%d", groupName, batch), BatchLabels(groupName, batch))
 }
 
 func (c *Client) IsolatePod(ns string, groupName string, idx int) error {
