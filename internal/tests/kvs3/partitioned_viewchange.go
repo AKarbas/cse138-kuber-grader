@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	kPartitionedViewChangeMaxScore = 10
+	PartitionedViewChangeMaxScore = 10
 )
 
 func PartitionedViewChangeTest(conf TestConfig) int {
@@ -24,7 +24,7 @@ func PartitionedViewChangeTest(conf TestConfig) int {
 	log.Infof("this test changes the view in a partitioned network; "+
 		"heals the network and waits; and checks that the data are readable in "+
 		"the new nodes after the view change. max score in test: %d",
-		kPartitionedViewChangeMaxScore)
+		PartitionedViewChangeMaxScore)
 	k8sClient := k8s.Client{}
 
 	score := 0

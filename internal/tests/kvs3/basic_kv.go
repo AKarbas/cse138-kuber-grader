@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	kBasicKVMaxScore = 80
+	BasicKVMaxScore = 80
 )
 
 func BasicKVTest(conf TestConfig) int {
@@ -24,7 +24,7 @@ func BasicKVTest(conf TestConfig) int {
 	})
 	log.Infof("this test runs on a healthy network and checks "+
 		"if simple view and data operations are successful. "+
-		"max score in test: %d", kBasicKVMaxScore)
+		"max score in test: %d", BasicKVMaxScore)
 	k8sClient := k8s.Client{}
 
 	score := 0

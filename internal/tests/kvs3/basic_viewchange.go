@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	kBasicViewChangeMaxScore = 10
+	BasicViewChangeMaxScore = 10
 )
 
 func BasicViewChangeTest(conf TestConfig) int {
@@ -23,7 +23,7 @@ func BasicViewChangeTest(conf TestConfig) int {
 	})
 	log.Infof("this test changes the view in a healthy network "+
 		"and checks that the data are readable in the new nodes after the "+
-		"view change. max score in test: %d", kBasicViewChangeMaxScore)
+		"view change. max score in test: %d", BasicViewChangeMaxScore)
 	k8sClient := k8s.Client{}
 
 	score := 0

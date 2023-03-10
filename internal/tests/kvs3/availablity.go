@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	kAvailabilityMaxScore = 10
+	AvailabilityMaxScore = 10
 )
 
 func AvailabilityTest(conf TestConfig) int {
@@ -23,7 +23,7 @@ func AvailabilityTest(conf TestConfig) int {
 	})
 	log.Infof("this test isolates each node and ensures that it's writable; and that "+
 		"after partitions are healed all nodes contain all of the data. max score in test: %d",
-		kAvailabilityMaxScore)
+		AvailabilityMaxScore)
 	k8sClient := k8s.Client{}
 
 	score := 0

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	kPartitionedTotalOrderMaxScore = 50
+	PartitionedTotalOrderMaxScore = 50
 )
 
 func PartitionedTotalOrderTest(conf TestConfig) int {
@@ -24,7 +24,7 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 	log.Infof("this test starts a cluster and then partitions the nodes "+
 		"into two parts; inserts to both parts; heals the partition; and expects "+
 		"the results to be the same from all nodes, including causal ordering and "+
-		"tie breaking. max score in test: %d", kPartitionedTotalOrderMaxScore)
+		"tie breaking. max score in test: %d", PartitionedTotalOrderMaxScore)
 	k8sClient := k8s.Client{}
 
 	score := 0
