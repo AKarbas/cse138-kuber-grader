@@ -34,6 +34,7 @@ func main() {
 		NumKeys:   10,
 	}
 
+	extrCredit := 1
 	scores := make([]int, 5)
 	maxes := []int{
 		kvs3.BasicKVMaxScore,
@@ -42,7 +43,7 @@ func main() {
 		kvs3.PartitionedViewChangeMaxScore,
 		kvs3.AvailabilityMaxScore,
 	}
-	weights := []int{3, 3, 2, 1, 3}
+	weights := []int{3, 3, 3, 1, 3}
 	tests := []kvs3.TestFunc{
 		kvs3.BasicKVTest,
 		kvs3.PartitionedTotalOrderTest,
@@ -75,6 +76,7 @@ func main() {
 		sum += float64(score) / float64(maxes[idx]) * float64(weights[idx])
 		sumWeights += float64(weights[idx])
 	}
+	sumWeights -= float64(extrCredit)
 	res := sum / sumWeights
 
 	log.Infof("Final score overall: %.2f", res)
