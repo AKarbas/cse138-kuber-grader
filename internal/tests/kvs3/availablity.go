@@ -22,7 +22,7 @@ func AvailabilityTest(conf TestConfig) int {
 		"numKeys":  conf.NumKeys,
 	})
 	log.Infof("this test isolates each node and ensures that it's writable; and that "+
-		"after partitions are healed all nodes contain all of the data. max score in test: %d",
+		"after partitions are healed, all nodes contain all of the data. max score in test: %d",
 		AvailabilityMaxScore)
 	k8sClient := k8s.Client{}
 
