@@ -92,6 +92,8 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 		sort.Strings(batches[b])
 	}
 
+	time.Sleep(11 * time.Second)
+
 	for b := 0; b < 2; b++ {
 		err = k8sClient.IsolateBatch(conf.Namespace, conf.GroupName, b+1)
 		if err != nil {

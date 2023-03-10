@@ -88,6 +88,8 @@ func PartitionedViewChangeTest(conf TestConfig) int {
 		return score
 	}
 
+	time.Sleep(11 * time.Second)
+
 	for b := 0; b < 3; b++ {
 		err = k8sClient.IsolateBatch(conf.Namespace, conf.GroupName, b+1)
 		if err != nil {
@@ -135,6 +137,8 @@ func PartitionedViewChangeTest(conf TestConfig) int {
 		}).Error("bad status code for put view")
 		return score
 	}
+
+	time.Sleep(11 * time.Second)
 
 	for i := 0; i < conf.NumKeys; i++ {
 		var value string

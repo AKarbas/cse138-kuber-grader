@@ -81,6 +81,8 @@ func AvailabilityTest(conf TestConfig) int {
 		return score
 	}
 
+	time.Sleep(11 * time.Second)
+
 	for i := 0; i < conf.NumNodes; i++ {
 		err = k8sClient.IsolatePod(conf.Namespace, conf.GroupName, i+1)
 		if err != nil {

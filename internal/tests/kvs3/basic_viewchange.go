@@ -86,6 +86,8 @@ func BasicViewChangeTest(conf TestConfig) int {
 		return score
 	}
 
+	time.Sleep(11 * time.Second)
+
 	var cm kvs3client.CausalMetadata = nil
 
 	for i := 0; i < conf.NumKeys; i++ {
@@ -120,6 +122,8 @@ func BasicViewChangeTest(conf TestConfig) int {
 		}).Error("bad status code for put view")
 		return score
 	}
+
+	time.Sleep(11 * time.Second)
 
 	for i := 0; i < conf.NumKeys; i++ {
 		var value string
