@@ -11,7 +11,7 @@ func main() {
 	client := k8s.Client{}
 
 	for {
-		pods, err := client.ListPods("", "app=hello")
+		pods, err := client.ListPods("", map[string]string{"app": "hello"})
 		if err != nil {
 			panic(err.Error())
 		}
@@ -19,6 +19,14 @@ func main() {
 
 		for idx, pod := range pods.Items {
 			fmt.Printf("Index %d: name: %s\n", idx, pod.GetName())
+		}
+
+		addresses, err := client.ListPodAddresses("", map[string]string{"app": "hello"})
+		if err != nil {
+			panic(err.Error())
+		}
+		for idx, addr := range addresses {
+			fmt.Printf("Pod %d: %s\n", idx+1, addr)
 		}
 		time.Sleep(10 * time.Second)
 	}
