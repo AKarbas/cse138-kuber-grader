@@ -84,6 +84,8 @@ func BasicKVTest(conf TestConfig) int {
 	score += 10
 	log.Info("score +10 - put view successful")
 
+	time.Sleep(10 * time.Second)
+
 	view, statusCode, err := kvs3client.GetView(addresses[conf.NumNodes-1])
 	if err != nil {
 		log.Errorf("failed to get view: %v", err)
