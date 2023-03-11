@@ -17,6 +17,9 @@ func main() {
 		"group": groupName,
 	})
 	log.Info("Graded using github.com/AKarbas/cse138-kuber-grader")
+	log.Info("All tests that expect a non-500 status code were done after waiting for the eventual consistency period.")
+	log.Info("After each view change or network heal, your system had 11 seconds to ensure consistency.")
+	log.Info("All data operations were done with a time-out of 21 seconds, and \"context deadline exceeded\" means longer waits.")
 	twoNodePerBatch := kvs3.TestConfig{
 		Registry:  "localhost:32000",
 		ImageTag:  "cse138-hw3-v1.0",

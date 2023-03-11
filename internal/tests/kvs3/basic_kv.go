@@ -62,6 +62,7 @@ func BasicKVTest(conf TestConfig) int {
 
 	time.Sleep(10 * time.Second)
 
+	success := true
 	addresses, err := k8sClient.ListPodAddresses(conf.Namespace, k8s.GroupLabels(conf.GroupName))
 	if err != nil {
 		log.Errorf("failed when listing node addresses: %v", err)
@@ -78,14 +79,17 @@ func BasicKVTest(conf TestConfig) int {
 		log.WithFields(logrus.Fields{
 			"expected": 200,
 			"received": statusCode,
-		}).Error("bad status code for put view")
-		return score
+		}).Warn("bad status code for put view")
+		success = false
 	}
-	score += 10
-	log.Info("score +10 - put view successful")
+	if success {
+		score += 10
+		log.Info("score +10 - put view successful")
+	}
 
 	time.Sleep(10 * time.Second)
 
+	success = true
 	view, statusCode, err := kvs3client.GetView(addresses[conf.NumNodes-1])
 	if err != nil {
 		log.Errorf("failed to get view: %v", err)
@@ -95,8 +99,8 @@ func BasicKVTest(conf TestConfig) int {
 		log.WithFields(logrus.Fields{
 			"expected": 200,
 			"received": statusCode,
-		}).Error("bad status code for get view")
-		return score
+		}).Warn("bad status code for get view")
+		success = false
 	}
 	sort.Strings(view)
 
@@ -104,14 +108,17 @@ func BasicKVTest(conf TestConfig) int {
 		log.WithFields(logrus.Fields{
 			"expected": addresses,
 			"received": view,
-		}).Error("view not consistent")
-		return score
+		}).Warn("view not consistent")
+		success = false
 	}
-	score += 10
-	log.Info("score +10 - view consistent")
+	if success {
+		score += 10
+		log.Info("score +10 - view consistent")
+	}
 
 	var cm kvs3client.CausalMetadata = nil
 
+	success = true
 	for i := 0; i < conf.NumKeys; i++ {
 		_, cm, statusCode, err = kvs3client.GetKey(
 			addresses[i%conf.NumNodes],
@@ -126,13 +133,16 @@ func BasicKVTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": 404,
 				"received": statusCode,
-			}).Error("invalid status code for get")
-			return score
+			}).Warn("invalid status code for get")
+			success = false
 		}
 	}
-	score += 10
-	log.Info("score +10 - first gets successful")
+	if success {
+		score += 10
+		log.Info("score +10 - first gets successful")
+	}
 
+	success = true
 	for i := 0; i < conf.NumKeys; i++ {
 		cm, statusCode, err = kvs3client.PutKeyVal(
 			addresses[(i+1)%conf.NumNodes],
@@ -148,13 +158,16 @@ func BasicKVTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": 201,
 				"received": statusCode,
-			}).Error("invalid status code for put")
-			return score
+			}).Warn("invalid status code for put")
+			success = false
 		}
 	}
-	score += 10
-	log.Info("score +10 - first puts successful")
+	if success {
+		score += 10
+		log.Info("score +10 - first puts successful")
+	}
 
+	success = true
 	for i := 0; i < conf.NumKeys; i++ {
 		var value string
 		value, cm, statusCode, err = kvs3client.GetKey(
@@ -170,21 +183,24 @@ func BasicKVTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": 200,
 				"received": statusCode,
-			}).Error("invalid status code for get")
-			return score
+			}).Warn("invalid status code for get")
+			success = false
 		}
 		expected := val(i, 0)
 		if value != expected {
 			log.WithFields(logrus.Fields{
 				"expected": expected,
 				"received": value,
-			}).Error("invalid value")
-			return score
+			}).Warn("invalid value")
+			success = false
 		}
 	}
-	score += 10
-	log.Info("score +10 - second gets successful")
+	if success {
+		score += 10
+		log.Info("score +10 - second gets successful")
+	}
 
+	success = true
 	for i := 0; i < conf.NumKeys; i++ {
 		cm, statusCode, err = kvs3client.PutKeyVal(
 			addresses[(i+3)%conf.NumNodes],
@@ -200,13 +216,16 @@ func BasicKVTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": 200,
 				"received": statusCode,
-			}).Error("invalid status code for put")
-			return score
+			}).Warn("invalid status code for put")
+			success = false
 		}
 	}
-	score += 10
-	log.Info("score +10 - second puts successful")
+	if success {
+		score += 10
+		log.Info("score +10 - second puts successful")
+	}
 
+	success = true
 	for i := 0; i < conf.NumKeys; i++ {
 		var value string
 		value, cm, statusCode, err = kvs3client.GetKey(
@@ -222,21 +241,24 @@ func BasicKVTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": 200,
 				"received": statusCode,
-			}).Error("invalid status code for get")
-			return score
+			}).Warn("invalid status code for get")
+			success = false
 		}
 		expected := val(i, 1)
 		if value != expected {
 			log.WithFields(logrus.Fields{
 				"expected": expected,
 				"received": value,
-			}).Error("invalid value")
-			return score
+			}).Warn("invalid value")
+			success = false
 		}
 	}
-	score += 10
-	log.Info("score +10 - third gets successful")
+	if success {
+		score += 10
+		log.Info("score +10 - third gets successful")
+	}
 
+	success = true
 	var keyCount int
 	var keys []string
 	keyCount, keys, cm, statusCode, err = kvs3client.GetKeyList(addresses[0], cm)
@@ -248,15 +270,15 @@ func BasicKVTest(conf TestConfig) int {
 		log.WithFields(logrus.Fields{
 			"expected": 200,
 			"received": statusCode,
-		}).Error("invalid status code for get key list")
-		return score
+		}).Warn("invalid status code for get key list")
+		success = false
 	}
 	if keyCount != conf.NumKeys {
 		log.WithFields(logrus.Fields{
 			"expected": conf.NumKeys,
 			"received": keyCount,
-		}).Error("invalid key count for get key list")
-		return score
+		}).Warn("invalid key count for get key list")
+		success = false
 	}
 	expected := []string{}
 	for i := 0; i < conf.NumKeys; i++ {
@@ -264,11 +286,13 @@ func BasicKVTest(conf TestConfig) int {
 	}
 	sort.Strings(keys)
 	if !slices.Equal(expected, keys) {
-		log.Error("invalid key list for get key list")
-		return score
+		log.Warn("invalid key list for get key list")
+		success = false
 	}
-	score += 10
-	log.Info("score +10 - key list valid")
+	if success {
+		score += 10
+		log.Info("score +10 - key list valid")
+	}
 
 	return score
 }

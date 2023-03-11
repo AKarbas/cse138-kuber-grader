@@ -94,6 +94,7 @@ func AvailabilityTest(conf TestConfig) int {
 
 	var cm kvs3client.CausalMetadata = nil
 
+	success := true
 	for k := 0; k < conf.NumKeys; k++ {
 		for i := 0; i < conf.NumNodes; i++ {
 			cm, statusCode, err = kvs3client.PutKeyVal(
@@ -110,8 +111,8 @@ func AvailabilityTest(conf TestConfig) int {
 				log.WithFields(logrus.Fields{
 					"expected": "200|201",
 					"received": statusCode,
-				}).Error("invalid status code for put")
-				return score
+				}).Warn("invalid status code for put")
+				success = false
 			}
 		}
 	}
@@ -136,21 +137,23 @@ func AvailabilityTest(conf TestConfig) int {
 				log.WithFields(logrus.Fields{
 					"expected": 200,
 					"received": statusCode,
-				}).Error("invalid status code for get")
-				return score
+				}).Warn("invalid status code for get")
+				success = false
 			}
 			expected := val(k, conf.NumNodes-1)
 			if value != expected {
 				log.WithFields(logrus.Fields{
 					"expected": expected,
 					"received": value,
-				}).Error("invalid value")
-				return score
+				}).Warn("invalid value")
+				success = false
 			}
 		}
 	}
-	score += 10
-	log.Info("score +10 - gets from new nodes after partition heal successful")
+	if success {
+		score += 10
+		log.Info("score +10 - gets from new nodes after partition heal successful")
+	}
 
 	return score
 }

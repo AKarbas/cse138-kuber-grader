@@ -75,6 +75,7 @@ func PartitionedViewChangeTest(conf TestConfig) int {
 	firstTwo := append(batches[0], batches[1]...)
 	firstAndThird := append(batches[0], batches[2]...)
 
+	success := true
 	statusCode, err := kvs3client.PutView(batches[0][0], firstTwo)
 	if err != nil {
 		log.Errorf("failed to put view: %v", err)
@@ -84,8 +85,8 @@ func PartitionedViewChangeTest(conf TestConfig) int {
 		log.WithFields(logrus.Fields{
 			"expected": 200,
 			"received": statusCode,
-		}).Error("bad status code for put view")
-		return score
+		}).Warn("bad status code for put view")
+		success = false
 	}
 
 	time.Sleep(11 * time.Second)
@@ -116,8 +117,8 @@ func PartitionedViewChangeTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": 201,
 				"received": statusCode,
-			}).Error("invalid status code for put")
-			return score
+			}).Warn("invalid status code for put")
+			success = false
 		}
 	}
 
@@ -134,8 +135,8 @@ func PartitionedViewChangeTest(conf TestConfig) int {
 		log.WithFields(logrus.Fields{
 			"expected": 200,
 			"received": statusCode,
-		}).Error("bad status code for put view")
-		return score
+		}).Warn("bad status code for put view")
+		success = false
 	}
 
 	time.Sleep(11 * time.Second)
@@ -155,20 +156,22 @@ func PartitionedViewChangeTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": 200,
 				"received": statusCode,
-			}).Error("invalid status code for get")
-			return score
+			}).Warn("invalid status code for get")
+			success = false
 		}
 		expected := val(i, 0)
 		if value != expected {
 			log.WithFields(logrus.Fields{
 				"expected": expected,
 				"received": value,
-			}).Error("invalid value")
-			return score
+			}).Warn("invalid value")
+			success = false
 		}
 	}
-	score += 10
-	log.Info("score +10 - gets from new nodes after partition heal successful")
+	if success {
+		score += 10
+		log.Info("score +10 - gets from new nodes after partition heal successful")
+	}
 
 	return score
 }

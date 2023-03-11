@@ -69,6 +69,7 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 	}
 	sort.Strings(addresses)
 
+	success := true
 	statusCode, err := kvs3client.PutView(addresses[0], addresses)
 	if err != nil {
 		log.Errorf("failed to put view: %v", err)
@@ -78,8 +79,8 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 		log.WithFields(logrus.Fields{
 			"expected": 200,
 			"received": statusCode,
-		}).Error("bad status code for put view")
-		return score
+		}).Warn("bad status code for put view")
+		success = false
 	}
 
 	batches := make([][]string, 2)
@@ -121,8 +122,8 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": 201,
 				"received": statusCode,
-			}).Error("invalid status code for put")
-			return score
+			}).Warn("invalid status code for put")
+			success = false
 		}
 	}
 
@@ -142,8 +143,8 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": 201,
 				"received": statusCode,
-			}).Error("invalid status code for put")
-			return score
+			}).Warn("invalid status code for put")
+			success = false
 		}
 	}
 
@@ -163,8 +164,8 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": "200|201",
 				"received": statusCode,
-			}).Error("invalid status code for put")
-			return score
+			}).Warn("invalid status code for put")
+			success = false
 		}
 	}
 
@@ -184,15 +185,18 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": "200|201",
 				"received": statusCode,
-			}).Error("invalid status code for put")
-			return score
+			}).Warn("invalid status code for put")
+			success = false
 		}
 	}
 
-	score += 10
-	log.Info("score +10 - partitioned puts successful")
+	if success {
+		score += 10
+		log.Info("score +10 - partitioned puts successful")
+	}
 
 	// Test correct/stall reads
+	success = true
 	for b := 0; b < 2; b++ {
 		i := conf.NumKeys - 1
 		var value string
@@ -209,20 +213,22 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": "200|500",
 				"received": statusCode,
-			}).Error("invalid status code for get")
-			return score
+			}).Warn("invalid status code for get")
+			success = false
 		}
 		if statusCode == 200 && value != val(i, 1) {
 			log.WithFields(logrus.Fields{
 				"expected": val(i, 1),
 				"received": value,
-			}).Error("invalid value")
-			return score
+			}).Warn("invalid value")
+			success = false
 		}
 	}
 
-	score += 10
-	log.Info("score +10 - partitioned gets successful")
+	if success {
+		score += 10
+		log.Info("score +10 - partitioned gets successful")
+	}
 
 	// Heal and wait
 	err = k8sClient.DeleteNetPolicies(conf.Namespace, k8s.GroupLabels(conf.GroupName))
@@ -232,6 +238,7 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 	}
 	time.Sleep(11 * time.Second)
 
+	success = true
 	var keyCount int
 	keyCount, _, cm, statusCode, err = kvs3client.GetKeyList(addresses[0], cm)
 	if err != nil {
@@ -242,20 +249,23 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 		log.WithFields(logrus.Fields{
 			"expected": 200,
 			"received": statusCode,
-		}).Error("invalid status code for get key list")
-		return score
+		}).Warn("invalid status code for get key list")
+		success = false
 	}
 	if keyCount != 2*conf.NumKeys {
 		log.WithFields(logrus.Fields{
 			"expected": 2 * conf.NumKeys,
 			"received": keyCount,
-		}).Error("invalid key count for get key list")
-		return score
+		}).Warn("invalid key count for get key list")
+		success = false
 	}
 
-	score += 10
-	log.Info("score +10 - key count after network heal successful")
+	if success {
+		score += 10
+		log.Info("score +10 - key count after network heal successful")
+	}
 
+	success = true
 	for i := 0; i < conf.NumKeys; i++ {
 		for b := 0; b < 2; b++ {
 			var value string
@@ -272,23 +282,26 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 				log.WithFields(logrus.Fields{
 					"expected": 200,
 					"received": statusCode,
-				}).Error("invalid status code for get")
-				return score
+				}).Warn("invalid status code for get")
+				success = false
 			}
 			expected := val(i, 1)
 			if value != expected {
 				log.WithFields(logrus.Fields{
 					"expected": expected,
 					"received": value,
-				}).Error("invalid value")
-				return score
+				}).Warn("invalid value")
+				success = false
 			}
 		}
 	}
 
-	score += 10
-	log.Info("score +10 - causal ordering after network heal successful")
+	if success {
+		score += 10
+		log.Info("score +10 - causal ordering after network heal successful")
+	}
 
+	success = true
 	for i := conf.NumKeys; i < 2*conf.NumKeys; i++ {
 		var expectedVal string
 		for b := 0; b < 2; b++ {
@@ -306,8 +319,8 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 				log.WithFields(logrus.Fields{
 					"expected": 200,
 					"received": statusCode,
-				}).Error("invalid status code for get")
-				return score
+				}).Warn("invalid status code for get")
+				success = false
 			}
 			if b == 0 {
 				expectedVal = value
@@ -318,14 +331,16 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 				log.WithFields(logrus.Fields{
 					"expected": expectedVal,
 					"received": value,
-				}).Error("invalid value - bad tie-breakink")
-				return score
+				}).Warn("invalid value - bad tie-breaking")
+				success = false
 			}
 		}
 	}
 
-	score += 10
-	log.Info("score +10 - tie-breaking after network heal successful")
+	if success {
+		score += 10
+		log.Info("score +10 - tie-breaking after network heal successful")
+	}
 
 	return score
 }

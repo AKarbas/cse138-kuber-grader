@@ -61,6 +61,7 @@ func BasicViewChangeTest(conf TestConfig) int {
 
 	time.Sleep(10 * time.Second)
 
+	success := true
 	var err error
 	batches := make([][]string, 2)
 	for b := 0; b < 2; b++ {
@@ -82,8 +83,8 @@ func BasicViewChangeTest(conf TestConfig) int {
 		log.WithFields(logrus.Fields{
 			"expected": 200,
 			"received": statusCode,
-		}).Error("bad status code for put view")
-		return score
+		}).Warn("bad status code for put view")
+		success = false
 	}
 
 	time.Sleep(11 * time.Second)
@@ -105,8 +106,8 @@ func BasicViewChangeTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": 201,
 				"received": statusCode,
-			}).Error("invalid status code for put")
-			return score
+			}).Warn("invalid status code for put")
+			success = false
 		}
 	}
 
@@ -119,8 +120,8 @@ func BasicViewChangeTest(conf TestConfig) int {
 		log.WithFields(logrus.Fields{
 			"expected": 200,
 			"received": statusCode,
-		}).Error("bad status code for put view")
-		return score
+		}).Warn("bad status code for put view")
+		success = false
 	}
 
 	time.Sleep(11 * time.Second)
@@ -140,20 +141,22 @@ func BasicViewChangeTest(conf TestConfig) int {
 			log.WithFields(logrus.Fields{
 				"expected": 200,
 				"received": statusCode,
-			}).Error("invalid status code for get")
-			return score
+			}).Warn("invalid status code for get")
+			success = false
 		}
 		expected := val(i, 0)
 		if value != expected {
 			log.WithFields(logrus.Fields{
 				"expected": expected,
 				"received": value,
-			}).Error("invalid value")
-			return score
+			}).Warn("invalid value")
+			success = false
 		}
 	}
-	score += 10
-	log.Info("score +10 - gets from new nodes successful")
+	if success {
+		score += 10
+		log.Info("score +10 - gets from new nodes successful")
+	}
 
 	return score
 }
