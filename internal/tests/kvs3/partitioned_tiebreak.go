@@ -327,5 +327,5 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 	score += 10
 	log.Info("score +10 - tie-breaking after network heal successful")
 
-	return 0
+	return score
 }
