@@ -11,7 +11,7 @@ import (
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-const kPodPort = "8080"
+var PodPort = "8080"
 
 func (c *Client) ListPods(ns string, labels map[string]string) (*v1.PodList, error) {
 	c.LazyInit()
@@ -42,7 +42,7 @@ func (c *Client) ListPodAddresses(ns string, labels map[string]string) ([]string
 				ready = false
 				break
 			}
-			res = append(res, fmt.Sprintf("%s:%s", pod.Status.PodIP, kPodPort))
+			res = append(res, fmt.Sprintf("%s:%s", pod.Status.PodIP, PodPort))
 		}
 		if ready {
 			break
@@ -87,7 +87,7 @@ func (c *Client) CreatePod(ns, name, image string, labels map[string]string) err
 	podIpEnvName := "POD_IP"
 	podIpFieldPath := "status.podIP"
 	addressEnvName := "ADDRESS"
-	addressEnvValue := fmt.Sprintf("$(POD_IP):%s", kPodPort)
+	addressEnvValue := fmt.Sprintf("$(POD_IP):%s", PodPort)
 	req := &corev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: applymetav1.TypeMetaApplyConfiguration{
 			Kind:       &kind,
