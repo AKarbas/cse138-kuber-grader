@@ -3,15 +3,30 @@ package kvs3client
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"time"
 )
 
-type CausalMetadata interface{}
+// This type is like json.RawMessage, except its zero-value (nil) marshals to "{}"
+type CausalMetadata []byte
 
-var kEmptyCM = struct{}{}
+func (cm CausalMetadata) MarshalJSON() ([]byte, error) {
+	if cm == nil {
+		return []byte("{}"), nil
+	}
+	return cm, nil
+}
+
+func (cm *CausalMetadata) UnmarshalJSON(data []byte) error {
+	if cm == nil {
+		return errors.New("json.RawMessage: UnmarshalJSON on nil pointer")
+	}
+	*cm = append((*cm)[0:0], data...)
+	return nil
+}
 
 type BaseBody struct {
 	CM CausalMetadata `json:"causal-metadata"`
@@ -47,9 +62,6 @@ func parseBaseBody(r *http.Response) (BaseBody, error) {
 }
 
 func PutKeyVal(dest, key, val string, cm CausalMetadata) (CausalMetadata, int, error) {
-	if cm == nil {
-		cm = kEmptyCM
-	}
 	data, err := json.Marshal(ValBody{
 		BaseBody: BaseBody{CM: cm},
 		Val:      val,
@@ -79,9 +91,6 @@ func PutKeyVal(dest, key, val string, cm CausalMetadata) (CausalMetadata, int, e
 }
 
 func GetKey(dest, key string, cm CausalMetadata) (string, CausalMetadata, int, error) {
-	if cm == nil {
-		cm = kEmptyCM
-	}
 	data, err := json.Marshal(BaseBody{CM: cm})
 	if err != nil {
 		panic(err.Error())
@@ -109,9 +118,6 @@ func GetKey(dest, key string, cm CausalMetadata) (string, CausalMetadata, int, e
 }
 
 func DeleteKey(dest, key string, cm CausalMetadata) (CausalMetadata, int, error) {
-	if cm == nil {
-		cm = kEmptyCM
-	}
 	data, err := json.Marshal(BaseBody{CM: cm})
 	if err != nil {
 		panic(err.Error())
@@ -138,9 +144,6 @@ func DeleteKey(dest, key string, cm CausalMetadata) (CausalMetadata, int, error)
 }
 
 func GetKeyList(dest string, cm CausalMetadata) (int, []string, CausalMetadata, int, error) {
-	if cm == nil {
-		cm = kEmptyCM
-	}
 	data, err := json.Marshal(BaseBody{CM: cm})
 	if err != nil {
 		panic(err.Error())
