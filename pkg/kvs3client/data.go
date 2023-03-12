@@ -44,7 +44,7 @@ type KeyListBody struct {
 }
 
 var dataHttpClient = http.Client{
-	Timeout: 21 * time.Second,
+	Timeout: 23 * time.Second,
 }
 
 func KvsDataKeyUrl(addr, key string) string {
