@@ -66,3 +66,6 @@ docker push registry-ip/team-name:cse138-hw3-v1.0
 GROUP=team-name go run ./cmd/hw3-grader
 ```
 
+### Caveat
+If you restart your MicroK8s cluster (or just restart your machine) the IP of the registry/etc. may change, and you may
+especially have to redo the routing part (Steps 3-7).
