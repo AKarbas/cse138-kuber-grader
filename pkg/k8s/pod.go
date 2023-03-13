@@ -88,6 +88,7 @@ func (c *Client) CreatePod(ns, name, image string, labels map[string]string) err
 	podIpFieldPath := "status.podIP"
 	addressEnvName := "ADDRESS"
 	addressEnvValue := fmt.Sprintf("$(POD_IP):%s", PodPort)
+	imagePullPolicy := v1.PullAlways
 	req := &corev1.PodApplyConfiguration{
 		TypeMetaApplyConfiguration: applymetav1.TypeMetaApplyConfiguration{
 			Kind:       &kind,
@@ -102,8 +103,9 @@ func (c *Client) CreatePod(ns, name, image string, labels map[string]string) err
 			RestartPolicy: (*v1.RestartPolicy)(&restartPolicy),
 			Containers: []corev1.ContainerApplyConfiguration{
 				{
-					Name:  &containerName,
-					Image: &image,
+					Name:            &containerName,
+					Image:           &image,
+					ImagePullPolicy: &imagePullPolicy,
 					Env: []corev1.EnvVarApplyConfiguration{
 						{
 							Name: &podIpEnvName,
