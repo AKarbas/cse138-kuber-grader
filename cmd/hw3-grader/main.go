@@ -37,7 +37,7 @@ func main() {
 		NumKeys:   10,
 	}
 
-	extrCredit := 1
+	extraCredit := 1
 	scores := make([]int, 5)
 	maxes := []int{
 		kvs3.BasicKVMaxScore,
@@ -79,7 +79,7 @@ func main() {
 		sum += float64(score) / float64(maxes[idx]) * float64(weights[idx])
 		sumWeights += float64(weights[idx])
 	}
-	sumWeights -= float64(extrCredit)
+	sumWeights -= float64(extraCredit)
 	res := sum / sumWeights
 
 	log.Infof("Final score overall: %.2f", res)
