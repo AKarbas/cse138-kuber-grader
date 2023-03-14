@@ -111,6 +111,8 @@ func BasicViewChangeTest(conf TestConfig) int {
 		}
 	}
 
+	time.Sleep(11 * time.Second)
+
 	statusCode, err = kvs3client.PutView(batches[0][0], all)
 	if err != nil {
 		log.Errorf("failed to put view: %v", err)
