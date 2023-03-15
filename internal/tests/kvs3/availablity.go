@@ -92,16 +92,17 @@ func AvailabilityTest(conf TestConfig) int {
 	}
 	defer k8sClient.DeleteNetPolicies(conf.Namespace, k8s.GroupLabels(conf.GroupName))
 
-	var cm kvs3client.CausalMetadata = nil
+	partitionCms := make([]kvs3client.CausalMetadata, conf.NumNodes)
 
 	success := true
 	for k := 0; k < conf.NumKeys; k++ {
 		for i := 0; i < conf.NumNodes; i++ {
-			cm, statusCode, err = kvs3client.PutKeyVal(
-				addresses[(i+k)%conf.NumNodes],
+			partitionId := (i + k) % conf.NumNodes
+			partitionCms[partitionId], statusCode, err = kvs3client.PutKeyVal(
+				addresses[partitionId],
 				key(k),
 				val(k, i),
-				cm,
+				partitionCms[partitionId],
 			)
 			if err != nil {
 				log.Errorf("failed to put key-val: %v", err)
@@ -124,10 +125,10 @@ func AvailabilityTest(conf TestConfig) int {
 	for k := 0; k < conf.NumKeys; k++ {
 		for i := 0; i < conf.NumNodes; i++ {
 			var value string
-			value, cm, statusCode, err = kvs3client.GetKey(
+			value, _, statusCode, err = kvs3client.GetKey(
 				addresses[(i+k+1)%conf.NumNodes],
 				key(k),
-				cm,
+				nil,
 			)
 			if err != nil {
 				log.Errorf("failed to get key: %v", err)
@@ -140,12 +141,11 @@ func AvailabilityTest(conf TestConfig) int {
 				}).Warn("invalid status code for get")
 				success = false
 			}
-			expected := val(k, conf.NumNodes-1)
-			if value != expected {
+			if len(value) < len(val(k, 0)) {
 				log.WithFields(logrus.Fields{
-					"expected": expected,
-					"received": value,
-				}).Warn("invalid value")
+					"minExpected": len(val(k, 0)),
+					"received":    len(value),
+				}).Warn("value too small")
 				success = false
 			}
 		}

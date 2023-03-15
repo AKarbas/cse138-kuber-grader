@@ -1,6 +1,7 @@
 package kvs3
 
 import (
+	"fmt"
 	"sort"
 	"time"
 
@@ -11,7 +12,7 @@ import (
 )
 
 const (
-	PartitionedTotalOrderMaxScore = 50
+	PartitionedTotalOrderMaxScore = 40
 )
 
 func PartitionedTotalOrderTest(conf TestConfig) int {
@@ -104,15 +105,16 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 	}
 	defer k8sClient.DeleteNetPolicies(conf.Namespace, k8s.GroupLabels(conf.GroupName))
 
-	var cm kvs3client.CausalMetadata = nil
+	partitionCms := make([]kvs3client.CausalMetadata, 2)
 
 	// First batch of causal puts
 	for i := 0; i < conf.NumKeys; i++ {
-		cm, statusCode, err = kvs3client.PutKeyVal(
-			batches[i%2][i%conf.NumNodes],
+		batchId := i % 2
+		partitionCms[batchId], statusCode, err = kvs3client.PutKeyVal(
+			batches[batchId][i%conf.NumNodes],
 			key(i),
 			val(i, 0),
-			cm,
+			partitionCms[batchId],
 		)
 		if err != nil {
 			log.Errorf("failed to put key-val: %v", err)
@@ -150,11 +152,12 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 
 	// Second batch of causal puts
 	for i := 0; i < conf.NumKeys; i++ {
-		cm, statusCode, err = kvs3client.PutKeyVal(
+		batchId := (i + 1) % 2
+		partitionCms[batchId], statusCode, err = kvs3client.PutKeyVal(
 			batches[(i+1)%2][i%conf.NumNodes],
 			key(i),
 			val(i, 1),
-			cm,
+			partitionCms[batchId],
 		)
 		if err != nil {
 			log.Errorf("failed to put key-val: %v", err)
@@ -198,30 +201,40 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 	// Test correct/stall reads
 	success = true
 	for b := 0; b < 2; b++ {
-		i := conf.NumKeys - 1
-		var value string
-		value, cm, statusCode, err = kvs3client.GetKey(
-			batches[b][i%conf.NumNodes],
-			key(i),
-			cm,
-		)
-		if err != nil {
-			log.Errorf("failed to get key: %v", err)
-			return score
-		}
-		if statusCode != 200 && statusCode != 500 {
-			log.WithFields(logrus.Fields{
-				"expected": "200|500",
-				"received": statusCode,
-			}).Warn("invalid status code for get")
-			success = false
-		}
-		if statusCode == 200 && value != val(i, 1) {
-			log.WithFields(logrus.Fields{
-				"expected": val(i, 1),
-				"received": value,
-			}).Warn("invalid value")
-			success = false
+		for cmIdx := 0; cmIdx < 2; cmIdx++ {
+			i := conf.NumKeys - 1
+			var value string
+			value, _, statusCode, err = kvs3client.GetKey(
+				batches[b][i%conf.NumNodes],
+				key(i),
+				partitionCms[cmIdx],
+			)
+			if err != nil {
+				log.Errorf("failed to get key: %v", err)
+				return score
+			}
+			if b == cmIdx && statusCode != 200 {
+				log.WithFields(logrus.Fields{
+					"expected": "200",
+					"received": statusCode,
+				}).Warn("invalid status code for get (node/partition has the entire causal history of the request)")
+				success = false
+			} else if b != cmIdx && statusCode != 200 && statusCode != 500 {
+				log.WithFields(logrus.Fields{
+					"expected": "200|500",
+					"received": statusCode,
+				}).Warn("invalid status code for get")
+				success = false
+			}
+			expected0 := val(i, 0)
+			expected1 := val(i, 1)
+			if statusCode == 200 && value != expected0 && value != expected1 {
+				log.WithFields(logrus.Fields{
+					"expected": fmt.Sprintf("%s|%s", expected0, expected1),
+					"received": value,
+				}).Warn("invalid value")
+				success = false
+			}
 		}
 	}
 
@@ -240,7 +253,7 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 
 	success = true
 	var keyCount int
-	keyCount, _, cm, statusCode, err = kvs3client.GetKeyList(addresses[0], cm)
+	keyCount, _, _, statusCode, err = kvs3client.GetKeyList(addresses[0], nil)
 	if err != nil {
 		log.Errorf("failed to get key list: %v", err)
 		return score
@@ -266,13 +279,14 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 	}
 
 	success = true
-	for i := 0; i < conf.NumKeys; i++ {
+	for i := 0; i < 2*conf.NumKeys; i++ {
+		var expectedVal string
 		for b := 0; b < 2; b++ {
 			var value string
-			value, cm, statusCode, err = kvs3client.GetKey(
-				batches[b][0],
+			value, _, statusCode, err = kvs3client.GetKey(
+				batches[(b+i)%2][0],
 				key(i),
-				cm,
+				nil,
 			)
 			if err != nil {
 				log.Errorf("failed to get key: %v", err)
@@ -285,43 +299,17 @@ func PartitionedTotalOrderTest(conf TestConfig) int {
 				}).Warn("invalid status code for get")
 				success = false
 			}
-			expected := val(i, 1)
-			if value != expected {
+
+			expected0 := val(i, 0)
+			expected1 := val(i, 1)
+			if value != expected0 && value != expected1 {
 				log.WithFields(logrus.Fields{
-					"expected": expected,
+					"expected": fmt.Sprintf("%s|%s", expected0, expected1),
 					"received": value,
 				}).Warn("invalid value")
 				success = false
 			}
-		}
-	}
 
-	if success {
-		score += 10
-		log.Info("score +10 - causal ordering after network heal successful")
-	}
-
-	success = true
-	for i := conf.NumKeys; i < 2*conf.NumKeys; i++ {
-		var expectedVal string
-		for b := 0; b < 2; b++ {
-			var value string
-			value, cm, statusCode, err = kvs3client.GetKey(
-				batches[(b+i)%2][0],
-				key(i),
-				cm,
-			)
-			if err != nil {
-				log.Errorf("failed to get key: %v", err)
-				return score
-			}
-			if statusCode != 200 {
-				log.WithFields(logrus.Fields{
-					"expected": 200,
-					"received": statusCode,
-				}).Warn("invalid status code for get")
-				success = false
-			}
 			if b == 0 {
 				expectedVal = value
 				continue
