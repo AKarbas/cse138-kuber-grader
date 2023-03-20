@@ -5,7 +5,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/AKarbas/cse138-kuber-grader/internal/tests/kvs3"
+	"github.com/AKarbas/cse138-kuber-grader/internal/kvs3"
 )
 
 func main() {
