@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// This type is like json.RawMessage, except its zero-value (nil) marshals to "{}"
+// CausalMetadata is like json.RawMessage, except its zero-value (nil) marshals to "{}"
 type CausalMetadata []byte
 
 func (cm CausalMetadata) MarshalJSON() ([]byte, error) {
