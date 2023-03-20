@@ -1,7 +1,6 @@
 package kvs4
 
 import (
-	"reflect"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -12,7 +11,7 @@ import (
 
 const BasicKVMaxScore = 60
 
-func BasicKvTest(c Config, v ViewConfig, n int) int {
+func BasicKvTest(c Config, v ViewConfig) int {
 	log := logrus.New().WithFields(logrus.Fields{
 		"test":  "BasicKeyVal",
 		"group": c.GroupName,
@@ -24,10 +23,10 @@ func BasicKvTest(c Config, v ViewConfig, n int) int {
 			"3. do non-causally-dependent writes (all with CM={}) sprayed across all nodes (keys [1, N]); " +
 			"4. do causally-dependent writes (use CM received first req in second and so on) sprayed across" +
 			" all nodes (keys [N+1, 2N]); " +
-			"5. do reads on writes of step 3 (from all nodes, all with CM received from last write of 3) and" +
+			"5. do reads on writes of step 4 (from all nodes, all with CM received from last write of 4) and" +
 			" expect latest values" +
-			"6. wait for eventual consistency; " +
-			"7. do reads on writes of step 2 (from all nodes, all with CM={}) and expect consistent values from" +
+			"6. wait for eventual consistency (10s); " +
+			"7. do reads on writes of step 3 (from all nodes, all with CM={}) and expect consistent values from" +
 			" all nodes (tie-breaking). " +
 			"Steps 1-5 and 7 each have 10 points for a total of 60.",
 	)
@@ -43,12 +42,13 @@ func BasicKvTest(c Config, v ViewConfig, n int) int {
 		return score
 	}
 
-	if err := k8sClient.CreatePods(c.Namespace, c.GroupName, c.Image(), 1, n); err != nil {
+	if err := k8sClient.CreatePods(c.Namespace, c.GroupName, c.Image(), 1, v.NumNodes); err != nil {
 		log.Errorf("test start failed; failed to create pods: %v", err)
 		return score
 	}
 	defer PostTestCleanup(k8sClient, c.Namespace, c.GroupName)
 
+	log.Info("nodes created, sleeping for 10s (to let nodes start up)")
 	time.Sleep(10 * time.Second)
 
 	// PUT view
@@ -58,6 +58,7 @@ func BasicKvTest(c Config, v ViewConfig, n int) int {
 		return score
 	}
 
+	log.Info("putting view to the nodes")
 	statusCode, err := kvs4client.PutView(addresses[len(addresses)-1], kvs4client.ViewReq{Nodes: addresses, NumShards: v.NumShards})
 	if err != nil {
 		log.Errorf("failed to put view: %v", err)
@@ -73,49 +74,87 @@ func BasicKvTest(c Config, v ViewConfig, n int) int {
 	score += 10
 	log.WithField("score", score).Info("score +10 - put view successful")
 
+	log.Info("sleeping for 10s (to let nodes set up the view)")
 	time.Sleep(10 * time.Second)
 
 	// GET view
-	receivedView := kvs4client.ViewResp{}
-	for idx, addr := range addresses {
-		resp, statusCode, err := kvs4client.GetView(addr)
-		if err != nil {
-			log.Errorf("failed to get view: %v", err)
-			return score
-		}
-		if statusCode != 200 {
-			log.WithFields(logrus.Fields{
-				"expected": 200,
-				"received": statusCode,
-			}).Error("bad status code for get view")
-			return score
-		}
-
-		if idx == 0 {
-			nodeCounter := 0
-			for _, s := range resp.View {
-				nodeCounter += len(s.Nodes)
-			}
-			if nodeCounter != n {
-				log.WithFields(logrus.Fields{
-					"expected": n,
-					"received": nodeCounter,
-				}).Errorf("total number of nodes does not match; received view: %+v", resp)
-			}
-			receivedView = resp
-			continue
-		}
-
-		if !reflect.DeepEqual(resp, receivedView) {
-			log.WithFields(logrus.Fields{
-				"expected": receivedView,
-				"received": resp,
-			}).Error("received views from different nodes do not match")
-			return score
-		}
+	log.Info("getting views from nodes and checking consistency")
+	if err := TestViewsConsistent(addresses, v); err != nil {
+		log.Errorf("test failed: %v", err)
+		return score
 	}
 	score += 10
-	log.WithField("score", score).Info("score +10 - get view from all nodes successful")
+	log.WithField("score", score).Info("score +10 - get view from all nodes successful and all views consistent")
+
+	// Independent Puts
+	independentSprayConf := SprayConfig{
+		addresses:           addresses,
+		minI:                1,
+		maxI:                v.NumNodes,
+		minJ:                1,
+		maxJ:                3,
+		cm:                  nil,
+		noCm:                true,
+		acceptedStatusCodes: []int{200, 201},
+	}
+	log.Infof("putting independent key-value pairs (CM={}) to all nodes, minKeyIndex=%d, maxKeyIndex=%d, "+
+		"minValIndexPerKey=%d, maxValIndexPerKey=%d",
+		independentSprayConf.minI, independentSprayConf.maxI, independentSprayConf.minJ, independentSprayConf.maxJ)
+	if _, err = SprayPuts(independentSprayConf); err != nil {
+		log.Errorf("failed to put independent key-value pairs: %v", err)
+		return score
+	}
+	score += 10
+	log.WithField("score", score).Info("score +10 - put independent key-value pairs successful")
+
+	// Dependent Puts
+	dependentSprayConf := SprayConfig{
+		addresses:           addresses,
+		minI:                v.NumNodes + 1,
+		maxI:                2 * v.NumNodes,
+		minJ:                1,
+		maxJ:                3,
+		cm:                  nil,
+		noCm:                false,
+		acceptedStatusCodes: []int{200, 201},
+	}
+	log.Infof("putting dependent key-value pairs (reusing CM) to all nodes, minKeyIndex=%d, maxKeyIndex=%d, "+
+		"minValIndexPerKey=%d, maxValIndexPerKey=%d",
+		dependentSprayConf.minI, dependentSprayConf.maxI, dependentSprayConf.minJ, dependentSprayConf.maxJ)
+
+	if dependentSprayConf.cm, err = SprayPuts(dependentSprayConf); err != nil {
+		log.Errorf("failed to put dependent key-value pairs: %v", err)
+		return score
+	}
+	score += 10
+	log.WithField("score", score).Info("score +10 - put dependent key-value pairs successful")
+
+	// Dependent Gets
+	dependentSprayConf.minJ = dependentSprayConf.maxJ
+	log.Infof("getting dependent key-value pairs (reusing CM) from all nodes and expecting latest value, "+
+		"minKeyIndex=%d, maxKeyIndex=%d, expectedValIndex=%d",
+		dependentSprayConf.minI, dependentSprayConf.maxI, dependentSprayConf.maxJ)
+	if dependentSprayConf.cm, err = SprayGets(dependentSprayConf); err != nil {
+		log.Errorf("failed to get dependent key-value pairs: %v", err)
+		return score
+	}
+	score += 10
+	log.WithField("score", score).Info("score +10 - get dependent key-value pairs successful")
+
+	// Sleep
+	log.Info("sleeping for 11s (to let nodes become eventually consistent)")
+	time.Sleep(11 * time.Second)
+
+	// Independent Gets
+	log.Infof("getting independent key-value pairs (with CM={}) from all nodes and expecting consistent values, "+
+		"minKeyIndex=%d, maxKeyIndex=%d, minValIndexPerKey=%d, maxValIndexPerKey=%d",
+		independentSprayConf.minI, independentSprayConf.maxI, independentSprayConf.minJ, independentSprayConf.maxJ)
+	if _, err := SprayGets(independentSprayConf); err != nil {
+		log.Errorf("failed to get independent key-value pairs: %v", err)
+		return score
+	}
+	score += 10
+	log.WithField("score", score).Info("score +10 - get independent key-value pairs successful")
 
 	return score
 }
