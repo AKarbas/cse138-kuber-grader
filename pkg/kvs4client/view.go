@@ -4,14 +4,24 @@ import (
 	"bytes"
 	"encoding/json"
 	"net/http"
+	"sort"
 	"time"
 
 	"github.com/AKarbas/cse138-kuber-grader/pkg/kvs3client"
 )
 
-type View struct {
+type ViewReq struct {
 	Nodes     []string `json:"view"`
 	NumShards int      `json:"num_shards"`
+}
+
+type ViewResp struct {
+	View []ViewRespShard `json:"view'"`
+}
+
+type ViewRespShard struct {
+	ShardId string   `json:"shard_id"`
+	Nodes   []string `json:"nodes"`
 }
 
 var viewHttpClient = http.Client{
@@ -20,7 +30,7 @@ var viewHttpClient = http.Client{
 
 var KvsAdminViewUrl = kvs3client.KvsAdminViewUrl
 
-func PutView(dest string, view View) (int, error) {
+func PutView(dest string, view ViewReq) (int, error) {
 	data, err := json.Marshal(view)
 	if err != nil {
 		panic(err.Error())
@@ -40,15 +50,21 @@ func PutView(dest string, view View) (int, error) {
 	return resp.StatusCode, nil
 }
 
-func GetView(dest string) (View, int, error) {
-	res := View{}
+func GetView(dest string) (ViewResp, int, error) {
+	res := ViewResp{}
 	resp, err := viewHttpClient.Get(KvsAdminViewUrl(dest))
 	if err != nil {
 		return res, 0, err
 	}
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	resp.Body.Close()
-	return res, resp.StatusCode, err
+	if err != nil {
+		return res, resp.StatusCode, err
+	}
+	for _, vrs := range res.View {
+		sort.Strings(vrs.Nodes)
+	}
+	return res, resp.StatusCode, nil
 }
 
 func DeleteView(dest string) (int, error) {

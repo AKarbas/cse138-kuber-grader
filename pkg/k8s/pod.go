@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -11,7 +12,7 @@ import (
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-const PodPort = "8080"
+const PodPort = "9090"
 
 func (c *Client) ListPods(ns string, labels map[string]string) (*v1.PodList, error) {
 	c.LazyInit()
@@ -48,6 +49,7 @@ func (c *Client) ListPodAddresses(ns string, labels map[string]string) ([]string
 			break
 		}
 	}
+	sort.Strings(res)
 	return res, nil
 }
 
