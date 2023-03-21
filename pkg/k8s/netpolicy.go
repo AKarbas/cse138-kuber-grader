@@ -12,19 +12,45 @@ import (
 
 func (c *Client) IsolateBatch(ns string, groupName string, batch int) error {
 	c.LazyInit()
-	return c.CreateNetPolicy(ns, fmt.Sprintf("%s-g%d", groupName, batch), BatchLabels(groupName, batch))
+	return c.CreateNetPolicy(ns, fmt.Sprintf("%s-g%d", groupName, batch), BatchLabels(groupName, batch), nil)
+}
+
+func (c *Client) IsolatePodByIps(ns string, groupName string, idx int, ips []string) error {
+	c.LazyInit()
+	return c.CreateNetPolicy(ns, fmt.Sprintf("%s-p%d", groupName, idx), PodLabelsNoBatch(groupName, idx), ips)
 }
 
 func (c *Client) IsolatePod(ns string, groupName string, idx int) error {
 	c.LazyInit()
-	return c.CreateNetPolicy(ns, fmt.Sprintf("%s-p%d", groupName, idx), PodLabelsNoBatch(groupName, idx))
+	return c.CreateNetPolicy(ns, fmt.Sprintf("%s-p%d", groupName, idx), PodLabelsNoBatch(groupName, idx), nil)
 }
 
-func (c *Client) CreateNetPolicy(ns, name string, labels map[string]string) error {
+func (c *Client) CreateNetPolicy(ns, name string, labels map[string]string, extraIps []string) error {
 	c.LazyInit()
 	kind := "NetworkPolicy"
 	apiVersion := "networking.k8s.io/v1"
-	hostCidr := "192.168.0.0/16"
+	//hostCidr := "192.168.0.0/16"
+	from := []v1.NetworkPolicyPeerApplyConfiguration{
+		{
+			PodSelector: &applymetav1.LabelSelectorApplyConfiguration{
+				MatchLabels: labels,
+			},
+		},
+		//{
+		//	IPBlock: &v1.IPBlockApplyConfiguration{
+		//		CIDR: &hostCidr,
+		//	},
+		//},
+	}
+	for _, ip := range extraIps {
+		ipCidr := fmt.Sprintf("%s/32", ip)
+		from = append(from, v1.NetworkPolicyPeerApplyConfiguration{
+			IPBlock: &v1.IPBlockApplyConfiguration{
+				CIDR: &ipCidr,
+			},
+		})
+	}
+
 	req := &v1.NetworkPolicyApplyConfiguration{
 		TypeMetaApplyConfiguration: applymetav1.TypeMetaApplyConfiguration{
 			Kind:       &kind,
@@ -41,18 +67,7 @@ func (c *Client) CreateNetPolicy(ns, name string, labels map[string]string) erro
 			},
 			Ingress: []v1.NetworkPolicyIngressRuleApplyConfiguration{
 				{
-					From: []v1.NetworkPolicyPeerApplyConfiguration{
-						{
-							PodSelector: &applymetav1.LabelSelectorApplyConfiguration{
-								MatchLabels: labels,
-							},
-						},
-						{
-							IPBlock: &v1.IPBlockApplyConfiguration{
-								CIDR: &hostCidr,
-							},
-						},
-					},
+					From: from,
 				},
 			},
 			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress},

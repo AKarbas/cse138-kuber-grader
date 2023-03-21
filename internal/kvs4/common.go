@@ -51,32 +51,32 @@ func PostTestCleanup(kc k8s.Client, namespace, groupName string) {
 	_ = kc.AwaitDeletion(namespace, k8s.GroupLabels(groupName))
 }
 
-func TestViewsConsistent(addresses []string, conf ViewConfig) error {
+func TestViewsConsistent(addresses []string, conf ViewConfig) (kvs4client.ViewResp, error) {
 	firstView := kvs4client.ViewResp{}
 	for idx, addr := range addresses {
 		resp, statusCode, err := kvs4client.GetView(addr)
 		if err != nil {
-			return fmt.Errorf("failed to get view from node %s: %w", addr, err)
+			return kvs4client.ViewResp{}, fmt.Errorf("failed to get view from node %s: %w", addr, err)
 		}
 		if statusCode != 200 {
-			return fmt.Errorf("got bad status code when getting view from node %s, expected 200 but got %d",
+			return kvs4client.ViewResp{}, fmt.Errorf("got bad status code when getting view from node %s, expected 200 but got %d",
 				addr, statusCode)
 		}
 
 		if idx == 0 {
 			if err := ValidateView(resp, conf); err != nil {
-				return fmt.Errorf("received bad view from first node: %w", err)
+				return kvs4client.ViewResp{}, fmt.Errorf("received bad view from first node: %w", err)
 			}
 			firstView = resp
 			continue
 		}
 
 		if !reflect.DeepEqual(resp, firstView) {
-			fmt.Errorf("received view from node %d (%s) different from view received from node 1, "+
+			return kvs4client.ViewResp{}, fmt.Errorf("received view from node %d (%s) different from view received from node 1, "+
 				"received view: %+v, expected view: %+v", idx+1, addr, resp, firstView)
 		}
 	}
-	return nil
+	return firstView, nil
 }
 
 func ValidateView(viewResp kvs4client.ViewResp, conf ViewConfig) error {

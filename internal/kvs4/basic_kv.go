@@ -21,10 +21,10 @@ func BasicKvTest(c Config, v ViewConfig) int {
 			"1. create a cluster (launch processes; wait 10s; PUT view); " +
 			"2. get the view from all nodes and expect consistency; " +
 			"3. do non-causally-dependent writes (all with CM={}) sprayed across all nodes (keys [1, N]); " +
-			"4. do causally-dependent writes (use CM received first req in second and so on) sprayed across" +
+			"4. do causally-dependent writes (use CM received after first req in second and so on) sprayed across" +
 			" all nodes (keys [N+1, 2N]); " +
-			"5. do reads on writes of step 4 (from all nodes, all with CM received from last write of 4) and" +
-			" expect latest values" +
+			"5. do reads on writes of step 4 (from all nodes, all with reused CM (frm previous access or the end of step 4))" +
+			" and expect latest values; " +
 			"6. wait for eventual consistency (10s); " +
 			"7. do reads on writes of step 3 (from all nodes, all with CM={}) and expect consistent values from" +
 			" all nodes (tie-breaking). " +
@@ -79,7 +79,7 @@ func BasicKvTest(c Config, v ViewConfig) int {
 
 	// GET view
 	log.Info("getting views from nodes and checking consistency")
-	if err := TestViewsConsistent(addresses, v); err != nil {
+	if _, err := TestViewsConsistent(addresses, v); err != nil {
 		log.Errorf("test failed: %v", err)
 		return score
 	}

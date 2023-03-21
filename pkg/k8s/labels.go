@@ -2,30 +2,43 @@ package k8s
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
+const GroupKey = "group"
+const BatchKey = "batch"
+const IndexKey = "index"
+
 func GroupLabels(groupName string) map[string]string {
 	res := make(map[string]string)
-	res["group"] = groupName
+	res[GroupKey] = groupName
 	return res
 }
 
 func BatchLabels(groupName string, batch int) map[string]string {
 	res := GroupLabels(groupName)
-	res["batch"] = fmt.Sprintf("%d", batch)
+	res[BatchKey] = fmt.Sprintf("%d", batch)
 	return res
 }
 
 func PodLabels(groupName string, batch, idx int) map[string]string {
 	res := BatchLabels(groupName, batch)
-	res["index"] = fmt.Sprintf("%d", idx)
+	res[IndexKey] = fmt.Sprintf("%d", idx)
 	return res
 }
 
 func PodLabelsNoBatch(groupName string, idx int) map[string]string {
 	res := GroupLabels(groupName)
-	res["index"] = fmt.Sprintf("%d", idx)
+	res[IndexKey] = fmt.Sprintf("%d", idx)
+	return res
+}
+
+func IntFromIntLabel(il string) int {
+	res, err := strconv.Atoi(il[1:])
+	if err != nil {
+		panic(err)
+	}
 	return res
 }
 
