@@ -24,16 +24,16 @@ func KeyDistTest(c TestConfig, n1 int) int {
 		"viewConfig2": v2.String(),
 	}).Info(
 		"starting test. Steps: " +
-				"1. create all needed nodes; " +
-				"2. put viewConfig1; " +
-				"3. get view from all nodes and expect consistency; " +
-				"4. do 20K causally independent writes sprayed across all nodes; " +
-				"5. sleep for 11 seconds; " +
-				"6. expect number of keys in each shard to be within 15% of 20K/s1; " +
-				"7. put viewConfig2; " +
-				"8. get view from all nodes and expect consistency; " +
-				"9. expect number of keys moved to be within 15% of 20K/s2. " +
-				"Steps 4, 6, 9 each have 10 points for a total of 30 (step 9 is extra credit).",
+			"1. create all needed nodes; " +
+			"2. put viewConfig1; " +
+			"3. get view from all nodes and expect consistency; " +
+			"4. do 20K causally independent writes sprayed across all nodes; " +
+			"5. sleep for 11 seconds; " +
+			"6. expect number of keys in each shard to be within 15% of 20K/s1; " +
+			"7. put viewConfig2; " +
+			"8. get view from all nodes and expect consistency; " +
+			"9. expect number of keys moved to be within 15% of 20K/s2. " +
+			"Steps 4, 6, 9 each have 10 points for a total of 30 (step 9 is extra credit).",
 	)
 
 	k8sClient := k8s.Client{}
@@ -100,7 +100,7 @@ func KeyDistTest(c TestConfig, n1 int) int {
 		acceptedStatusCodes: []int{200, 201},
 	}
 	log.Infof("putting 20K independent key-value pairs (CM={}) to all nodes, minKeyIndex=%d, maxKeyIndex=%d, "+
-			"valIndex=%d",
+		"valIndex=%d",
 		sprayConf.minI, sprayConf.maxI, sprayConf.maxJ)
 	if _, err = SprayPuts(sprayConf); err != nil {
 		log.Errorf("failed to put independent key-value pairs: %v", err)
@@ -120,28 +120,30 @@ func KeyDistTest(c TestConfig, n1 int) int {
 		log.Errorf("key list failed: %v", err)
 		return score
 	}
-	nodeKeys1, err := NodeKeyLists(shardKeys1, view1)
+	nodeKeys1, err := NodeKeySets(shardKeys1, view1)
 	if err != nil {
 		log.Errorf("failed to map nodes to keys: %v", err)
 		return score
 	}
 	var counts []float64
 	var sum float64 = 0.0
-	for _, kl := range shardKeys1 {
-		counts = append(counts, float64(len(kl)))
-		sum += float64(len(kl))
+	for _, ks := range shardKeys1 {
+		counts = append(counts, float64(len(ks)))
+		sum += float64(len(ks))
 	}
 	avg := sum / float64(len(counts))
 
 	for idx, count := range counts {
 		diff := math.Abs(count - avg)
-		if (diff / avg) >= 0.15 {
-			log.Errorf("bad key distribution; shardCounts=%v, avg=%.2f, errorIndex=%d", counts, avg, idx)
+		if (diff / avg) > 0.15 {
+			log.Errorf("bad key distribution among shards; shardCounts=%v, avg=%.2f, errorIndex=%d", counts, avg, idx)
 			return score
 		}
 	}
 	score += 10
-	log.WithField("score", score).Info("score +10 - key distribution (with <=15% deviation) successful")
+	log.WithField("score", score).Info(
+		"score +10 - key distribution (with <=15% deviation from optimal) successful",
+	)
 
 	// PUT view 2
 	log.Infof("putting view 2 to the nodes (%s)", v2.String())
@@ -176,20 +178,37 @@ func KeyDistTest(c TestConfig, n1 int) int {
 		log.Errorf("key list failed: %v", err)
 		return score
 	}
-	nodeKeys2, err := NodeKeyLists(shardKeys2, view2)
+	nodeKeys2, err := NodeKeySets(shardKeys2, view2)
 	if err != nil {
 		log.Errorf("failed to map nodes to keys: %v", err)
 		return score
 	}
 
-	totalMovement := 0
-	// TODO: iterate over view1 nodes and count diffs.
-	for idx, kl := range shardKeys1 {
-		notInKl2 := 0
-		for _, k := range kl {
-			if sK
+	totalMovement := len(nodeKeys2[view2Addrs[v2.NumNodes-1]]) // added to last node
+	for node, ks1 := range nodeKeys1 {
+		ks2 := nodeKeys2[node]
+		inKs2 := 0
+		for k := range ks1 {
+			if _, ok := ks2[k]; ok {
+				inKs2++
+			}
 		}
+		totalMovement += len(ks1) - inKs2 // not in keySet2 -- removed from node
+		totalMovement += len(ks2) - inKs2 // not in keySet1 -- added to node
 	}
+
+	totalMovement /= 2 // remove double-counting
+	bestMovement := 20000 / v2.NumShards
+	movementDiff := math.Abs(float64(totalMovement - bestMovement))
+	if (movementDiff / float64(bestMovement)) > 0.15 {
+		log.Errorf("key movement more than 15%% of optimal movement; moved=%d, optimal=%d",
+			totalMovement, bestMovement)
+		return score
+	}
+	score += 10
+	log.WithField("score", score).Info(
+		"score +10 - key movement (with <=15% deviation from optimal) successful",
+	)
 
 	return score
 }

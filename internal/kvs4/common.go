@@ -3,7 +3,6 @@ package kvs4
 import (
 	"fmt"
 	"reflect"
-	"sort"
 
 	"k8s.io/utils/strings/slices"
 
@@ -238,8 +237,9 @@ func GenPartitions(v kvs4client.ViewResp) [][]string {
 	return res
 }
 
-func TestKeyLists(addresses []string, minI, maxI int) (map[string][]string, error) {
-	shardKeys := make(map[string][]string)
+func TestKeyLists(addresses []string, minI, maxI int) (map[string]map[string]struct{}, error) {
+	shardKeys := make(map[string]map[string]struct{})
+	exists := struct{}{}
 	shardCounts := make(map[string]int)
 	for idx, addr := range addresses {
 		res, statusCode, err := kvs4client.GetKeyList(addr, nil)
@@ -252,11 +252,17 @@ func TestKeyLists(addresses []string, minI, maxI int) (map[string][]string, erro
 		if res.Count != len(res.Keys) {
 			return nil, fmt.Errorf("bad key list: count (%d) != len(keys) (%d)", res.Count, len(res.Keys))
 		}
-		sort.Strings(res.Keys)
-		var prevKeys []string
+		keySet := make(map[string]struct{})
+		for _, k := range res.Keys {
+			keySet[k] = exists
+		}
+		if len(keySet) != len(res.Keys) {
+			return nil, fmt.Errorf("key list contains duplicates")
+		}
+		var prevKeys map[string]struct{}
 		var ok bool
 		if prevKeys, ok = shardKeys[res.ShardId]; !ok {
-			shardKeys[res.ShardId] = res.Keys
+			shardKeys[res.ShardId] = keySet
 			shardCounts[res.ShardId] = res.Count
 			continue
 		}
@@ -264,7 +270,7 @@ func TestKeyLists(addresses []string, minI, maxI int) (map[string][]string, erro
 			return nil, fmt.Errorf("number of keys in shard inconsistent across nodes (got=%d, expected=%d)",
 				res.Count, shardCounts[res.ShardId])
 		}
-		if !reflect.DeepEqual(res.Keys, prevKeys) {
+		if !reflect.DeepEqual(keySet, prevKeys) {
 			return nil, fmt.Errorf("keys in shard inconsistent across nodes")
 		}
 	}
@@ -279,9 +285,8 @@ func TestKeyLists(addresses []string, minI, maxI int) (map[string][]string, erro
 	}
 
 	allKeys := make(map[string]struct{})
-	exists := struct{}{}
-	for _, keyList := range shardKeys {
-		for _, key := range keyList {
+	for _, keySet := range shardKeys {
+		for key, _ := range keySet {
 			if _, ok := allKeys[key]; !ok {
 				allKeys[key] = exists
 				continue
@@ -293,12 +298,14 @@ func TestKeyLists(addresses []string, minI, maxI int) (map[string][]string, erro
 	return shardKeys, nil
 }
 
-func NodeKeyLists(shardKeyLists map[string][]string, view kvs4client.ViewResp) (map[string][]string, error) {
-	res := make(map[string][]string)
+func NodeKeySets(
+	shardKeySets map[string]map[string]struct{}, view kvs4client.ViewResp,
+) (map[string]map[string]struct{}, error) {
+	res := make(map[string]map[string]struct{})
 	for _, shard := range view.View {
 		for _, node := range shard.Nodes {
 			var ok bool
-			res[node], ok = shardKeyLists[shard.ShardId]
+			res[node], ok = shardKeySets[shard.ShardId]
 			if !ok {
 				return nil, fmt.Errorf("shardId (%s) not found in shardKeyLists, view=%+v", shard.ShardId, view)
 			}
