@@ -49,6 +49,7 @@ func PreTestCleanup(kc k8s.Client, namespace, groupName string) error {
 func PostTestCleanup(kc k8s.Client, namespace, groupName string) {
 	_ = kc.DeletePods(namespace, k8s.GroupLabels(groupName))
 	_ = kc.AwaitDeletion(namespace, k8s.GroupLabels(groupName))
+	_ = kc.DeleteNetPolicies(namespace, k8s.GroupLabels(groupName))
 }
 
 func TestViewsConsistent(addresses []string, conf ViewConfig) (kvs4client.ViewResp, error) {
@@ -164,6 +165,9 @@ func SprayGets(conf SprayConfig) (kvs4client.CausalMetadata, error) {
 		acceptedVals := make([]string, conf.maxJ-conf.minJ)
 		for j := conf.minJ; j < conf.maxJ; j++ {
 			acceptedVals[j-conf.minJ] = Val(i, j)
+		}
+		if contains(conf.acceptedStatusCodes, 500) {
+			acceptedVals = append(acceptedVals, "")
 		}
 		nodeIdx := i % len(conf.addresses)
 		key := Key(i)

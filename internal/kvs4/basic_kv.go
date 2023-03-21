@@ -131,6 +131,7 @@ func BasicKvTest(c Config, v ViewConfig) int {
 
 	// Dependent Gets
 	dependentSprayConf.minJ = dependentSprayConf.maxJ
+	dependentSprayConf.acceptedStatusCodes = []int{200}
 	log.Infof("getting dependent key-value pairs (reusing CM) from all nodes and expecting latest value, "+
 		"minKeyIndex=%d, maxKeyIndex=%d, expectedValIndex=%d",
 		dependentSprayConf.minI, dependentSprayConf.maxI, dependentSprayConf.maxJ)
@@ -146,6 +147,7 @@ func BasicKvTest(c Config, v ViewConfig) int {
 	time.Sleep(11 * time.Second)
 
 	// Independent Gets
+	independentSprayConf.acceptedStatusCodes = []int{200}
 	log.Infof("getting independent key-value pairs (with CM={}) from all nodes and expecting consistent values, "+
 		"minKeyIndex=%d, maxKeyIndex=%d, minValIndexPerKey=%d, maxValIndexPerKey=%d",
 		independentSprayConf.minI, independentSprayConf.maxI, independentSprayConf.minJ, independentSprayConf.maxJ)

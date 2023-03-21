@@ -94,9 +94,103 @@ func AvailabilityTest(c Config, v ViewConfig) int {
 		return score
 	}
 
-	endpoints := make([]string, len(partitions))
+	partitionEndpoints := make([]string, len(partitions))
 	for idx, part := range partitions {
-		endpoints[idx] = part[0]
+		partitionEndpoints[idx] = part[0]
+	}
+
+	// Independent Puts
+	independentSprayConf := SprayConfig{
+		addresses:           partitionEndpoints,
+		minI:                1,
+		maxI:                v.NumNodes,
+		minJ:                1,
+		maxJ:                3,
+		cm:                  nil,
+		noCm:                true,
+		acceptedStatusCodes: []int{200, 201},
+	}
+	log.Infof("putting independent key-value pairs (CM={}) to all partitions, minKeyIndex=%d, maxKeyIndex=%d, "+
+		"minValIndexPerKey=%d, maxValIndexPerKey=%d",
+		independentSprayConf.minI, independentSprayConf.maxI, independentSprayConf.minJ, independentSprayConf.maxJ)
+	if _, err = SprayPuts(independentSprayConf); err != nil {
+		log.Errorf("failed to put independent key-value pairs: %v", err)
+		return score
+	}
+	score += 10
+	log.WithField("score", score).Info("score +10 - put independent key-value pairs successful")
+
+	// Dependent Puts
+	dependentSprayConf := SprayConfig{
+		addresses:           partitionEndpoints,
+		minI:                v.NumNodes + 1,
+		maxI:                2 * v.NumNodes,
+		minJ:                1,
+		maxJ:                3,
+		cm:                  nil,
+		noCm:                false,
+		acceptedStatusCodes: []int{200, 201},
+	}
+	log.Infof("putting dependent key-value pairs (reusing CM) to all partitions, minKeyIndex=%d, maxKeyIndex=%d, "+
+		"minValIndexPerKey=%d, maxValIndexPerKey=%d",
+		dependentSprayConf.minI, dependentSprayConf.maxI, dependentSprayConf.minJ, dependentSprayConf.maxJ)
+
+	if dependentSprayConf.cm, err = SprayPuts(dependentSprayConf); err != nil {
+		log.Errorf("failed to put dependent key-value pairs: %v", err)
+		return score
+	}
+	score += 10
+	log.WithField("score", score).Info("score +10 - put dependent key-value pairs successful")
+
+	// Dependent Gets
+	dependentSprayConf.minJ = dependentSprayConf.maxJ
+	dependentSprayConf.acceptedStatusCodes = []int{200, 500, 503}
+	log.Infof("getting dependent key-value pairs (reusing CM) from all partitions and expecting latest value or "+
+		"stall-fail, minKeyIndex=%d, maxKeyIndex=%d, expectedValIndex=%d",
+		dependentSprayConf.minI, dependentSprayConf.maxI, dependentSprayConf.maxJ)
+	if dependentSprayConf.cm, err = SprayGets(dependentSprayConf); err != nil {
+		log.Warn("failed to get dependent key-value pairs: %v", err)
+	} else {
+		score += 10
+		log.WithField("score", score).Info("score +10 - get dependent key-value pairs successful")
+	}
+
+	// Heal network
+	log.Info("healing network partitions")
+	if err = k8sClient.DeleteNetPolicies(c.Namespace, k8s.GroupLabels(c.GroupName)); err != nil {
+		log.Errorf("failed to delete network policies: %v", err)
+		return score
+	}
+	// Sleep
+	log.Info("sleeping for 11s (to let nodes become eventually consistent)")
+	time.Sleep(11 * time.Second)
+
+	// Dependent Gets
+	dependentSprayConf.addresses = addresses
+	dependentSprayConf.minJ = dependentSprayConf.maxJ
+	dependentSprayConf.acceptedStatusCodes = []int{200}
+	dependentSprayConf.cm = nil
+	dependentSprayConf.noCm = true
+	log.Infof("getting dependent key-value pairs (reusing CM) from all nodes and expecting latest value, "+
+		"minKeyIndex=%d, maxKeyIndex=%d, expectedValIndex=%d",
+		dependentSprayConf.minI, dependentSprayConf.maxI, dependentSprayConf.maxJ)
+	if _, err = SprayGets(dependentSprayConf); err != nil {
+		log.Warn("failed to get dependent key-value pairs: %v", err)
+	} else {
+		score += 10
+		log.WithField("score", score).Info("score +10 - get dependent key-value pairs successful")
+	}
+	// Independent Gets
+	independentSprayConf.addresses = addresses
+	independentSprayConf.acceptedStatusCodes = []int{200}
+	log.Infof("getting independent key-value pairs (with CM={}) from all nodes and expecting consistent values, "+
+		"minKeyIndex=%d, maxKeyIndex=%d, minValIndexPerKey=%d, maxValIndexPerKey=%d",
+		independentSprayConf.minI, independentSprayConf.maxI, independentSprayConf.minJ, independentSprayConf.maxJ)
+	if _, err = SprayGets(independentSprayConf); err != nil {
+		log.Warnf("failed to get independent key-value pairs: %v", err)
+	} else {
+		score += 10
+		log.WithField("score", score).Info("score +10 - get independent key-value pairs successful")
 	}
 
 	return score
