@@ -161,7 +161,7 @@ func BasicKvTest(c TestConfig, v ViewConfig) int {
 
 	// Key List
 	log.Info("getting key list from all nodes and expecting 2N nodes in total")
-	if err := TestKeyLists(addresses, 1, 2*v.NumNodes); err != nil {
+	if _, err = TestKeyLists(addresses, 1, 2*v.NumNodes); err != nil {
 		log.Errorf("test failed: %v", err)
 		return score
 	}

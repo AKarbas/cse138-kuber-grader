@@ -238,19 +238,19 @@ func GenPartitions(v kvs4client.ViewResp) [][]string {
 	return res
 }
 
-func TestKeyLists(addresses []string, minI, maxI int) error {
+func TestKeyLists(addresses []string, minI, maxI int) (map[string][]string, error) {
 	shardKeys := make(map[string][]string)
 	shardCounts := make(map[string]int)
 	for idx, addr := range addresses {
 		res, statusCode, err := kvs4client.GetKeyList(addr, nil)
 		if err != nil {
-			return fmt.Errorf("failed to get key list from node %d: %w", idx+1, err)
+			return nil, fmt.Errorf("failed to get key list from node %d: %w", idx+1, err)
 		}
 		if statusCode != 200 {
-			return fmt.Errorf("bad status code for key list from node %d: %d (expected 200)", idx+1, 200)
+			return nil, fmt.Errorf("bad status code for key list from node %d: %d (expected 200)", idx+1, 200)
 		}
 		if res.Count != len(res.Keys) {
-			return fmt.Errorf("count (%d) != len(keys) (%d)", res.Count, len(res.Keys))
+			return nil, fmt.Errorf("bad key list: count (%d) != len(keys) (%d)", res.Count, len(res.Keys))
 		}
 		sort.Strings(res.Keys)
 		var prevKeys []string
@@ -261,11 +261,11 @@ func TestKeyLists(addresses []string, minI, maxI int) error {
 			continue
 		}
 		if res.Count != shardCounts[res.ShardId] {
-			return fmt.Errorf("number of keys in shard inconsistent across nodes (got=%d, expected=%d)",
+			return nil, fmt.Errorf("number of keys in shard inconsistent across nodes (got=%d, expected=%d)",
 				res.Count, shardCounts[res.ShardId])
 		}
 		if !reflect.DeepEqual(res.Keys, prevKeys) {
-			return fmt.Errorf("keys in shard inconsistent across nodes")
+			return nil, fmt.Errorf("keys in shard inconsistent across nodes")
 		}
 	}
 
@@ -274,7 +274,7 @@ func TestKeyLists(addresses []string, minI, maxI int) error {
 		totalCount += cnt
 	}
 	if totalCount != (maxI - minI + 1) {
-		return fmt.Errorf("total number of keys in shards invalid, expected=%d, got=%d",
+		return nil, fmt.Errorf("total number of keys in shards invalid, expected=%d, got=%d",
 			maxI-minI+1, totalCount)
 	}
 
@@ -286,9 +286,23 @@ func TestKeyLists(addresses []string, minI, maxI int) error {
 				allKeys[key] = exists
 				continue
 			}
-			return fmt.Errorf("key %s exists in more than one shard", key)
+			return nil, fmt.Errorf("key %s exists in more than one shard", key)
 		}
 	}
 
-	return nil
+	return shardKeys, nil
+}
+
+func NodeKeyLists(shardKeyLists map[string][]string, view kvs4client.ViewResp) (map[string][]string, error) {
+	res := make(map[string][]string)
+	for _, shard := range view.View {
+		for _, node := range shard.Nodes {
+			var ok bool
+			res[node], ok = shardKeyLists[shard.ShardId]
+			if !ok {
+				return nil, fmt.Errorf("shardId (%s) not found in shardKeyLists, view=%+v", shard.ShardId, view)
+			}
+		}
+	}
+	return res, nil
 }
