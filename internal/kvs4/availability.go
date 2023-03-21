@@ -149,7 +149,7 @@ func AvailabilityTest(c TestConfig, v ViewConfig) int {
 		"stall-fail, minKeyIndex=%d, maxKeyIndex=%d, expectedValIndex=%d",
 		dependentSprayConf.minI, dependentSprayConf.maxI, dependentSprayConf.maxJ)
 	if dependentSprayConf.cm, err = SprayGets(dependentSprayConf); err != nil {
-		log.Warn("failed to get dependent key-value pairs: %v", err)
+		log.Warnf("failed to get dependent key-value pairs: %v", err)
 	} else {
 		score += 10
 		log.WithField("score", score).Info("score +10 - get dependent key-value pairs successful")
@@ -171,11 +171,11 @@ func AvailabilityTest(c TestConfig, v ViewConfig) int {
 	dependentSprayConf.acceptedStatusCodes = []int{200}
 	dependentSprayConf.cm = nil
 	dependentSprayConf.noCm = true
-	log.Infof("getting dependent key-value pairs (reusing CM) from all nodes and expecting latest value, "+
+	log.Infof("getting dependent key-value pairs (with CM={}) from all nodes and expecting latest value, "+
 		"minKeyIndex=%d, maxKeyIndex=%d, expectedValIndex=%d",
 		dependentSprayConf.minI, dependentSprayConf.maxI, dependentSprayConf.maxJ)
 	if _, err = SprayGets(dependentSprayConf); err != nil {
-		log.Warn("failed to get dependent key-value pairs: %v", err)
+		log.Warnf("failed to get dependent key-value pairs: %v", err)
 	} else {
 		score += 10
 		log.WithField("score", score).Info("score +10 - get dependent key-value pairs successful")
@@ -199,7 +199,7 @@ func AvailabilityTest(c TestConfig, v ViewConfig) int {
 func partitionNodes(
 	kc k8s.Client, c TestConfig, v kvs4client.ViewResp, m map[string]k8s.PodMetaDetails,
 ) ([][]string, error) {
-	parts := genPartitions(v)
+	parts := GenPartitions(v)
 	for _, part := range parts {
 		var partIps []string
 		for _, addr := range part {
@@ -212,24 +212,4 @@ func partitionNodes(
 		}
 	}
 	return parts, nil
-}
-
-func genPartitions(v kvs4client.ViewResp) [][]string {
-	numParts := -1
-	for _, s := range v.View {
-		if numParts == -1 || numParts > len(s.Nodes) {
-			numParts = len(s.Nodes)
-		}
-	}
-	res := make([][]string, numParts)
-	for _, s := range v.View {
-		for idx, node := range s.Nodes {
-			targetIdx := idx
-			if targetIdx >= numParts {
-				targetIdx = numParts - 1
-			}
-			res[targetIdx] = append(res[targetIdx], node)
-		}
-	}
-	return res
 }

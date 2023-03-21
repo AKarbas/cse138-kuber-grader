@@ -49,9 +49,9 @@ func main() {
 		s := s
 		tests = append(tests, Test{
 			Run:         func() int { return kvs4.BasicKvTest(conf, kvs4.ViewConfig{NumNodes: 4, NumShards: s}) },
-			Description: fmt.Sprintf("basicKV test with 4 nodes and %d shard(s)", s),
+			Description: fmt.Sprintf("(basicKV test with 4 nodes and %d shard(s) (weight=2)", s),
 			MaxScore:    kvs4.BasicKVMaxScore,
-			Weight:      1,
+			Weight:      2,
 		})
 	}
 
@@ -59,17 +59,62 @@ func main() {
 		s := s
 		tests = append(tests, Test{
 			Run:         func() int { return kvs4.AvailabilityTest(conf, kvs4.ViewConfig{NumNodes: 12, NumShards: s}) },
-			Description: fmt.Sprintf("availability test with 12 nodes and %d shards", s),
+			Description: fmt.Sprintf("availability test with 12 nodes and %d shards (weight=4)", s),
 			MaxScore:    kvs4.AvailabilityMaxScore,
-			Weight:      2,
+			Weight:      4,
 		})
 	}
+
+	viewConfigPairs := [][2]kvs4.ViewConfig{
+		{kvs4.ViewConfig{NumNodes: 8, NumShards: 3}, kvs4.ViewConfig{NumNodes: 9, NumShards: 4}},
+		{kvs4.ViewConfig{NumNodes: 8, NumShards: 3}, kvs4.ViewConfig{NumNodes: 8, NumShards: 4}},
+		{kvs4.ViewConfig{NumNodes: 8, NumShards: 7}, kvs4.ViewConfig{NumNodes: 15, NumShards: 7}},
+		{kvs4.ViewConfig{NumNodes: 8, NumShards: 3}, kvs4.ViewConfig{NumNodes: 2, NumShards: 1}},
+	}
+
+	for _, vcPair := range viewConfigPairs {
+		vcPair := vcPair
+		tests = append(tests, Test{
+			Run:         func() int { return kvs4.ViewChangeTest(conf, vcPair[0], vcPair[1], false) },
+			Description: fmt.Sprintf("viewChange test (killNodes=false) (weight=3)"),
+			MaxScore:    kvs4.ViewChangeMaxScore,
+			Weight:      3,
+		})
+	}
+
+	for _, vcPair := range viewConfigPairs {
+		vcPair := vcPair
+		tests = append(tests, Test{
+			Run:         func() int { return kvs4.ViewChangeTest(conf, vcPair[0], vcPair[1], true) },
+			Description: fmt.Sprintf("viewChange test (killNodes=true) (weight=4)"),
+			MaxScore:    kvs4.ViewChangeMaxScore,
+			Weight:      4,
+		})
+	}
+
+	extraCredit := 0
 
 	scores := make([]int, len(tests))
 	for idx, t := range tests {
 		log.Infof("starting test %d: %s", idx+1, t.Description)
 		scores[idx] = t.Run()
 		log.Infof("finished test %d with score %d/%d", idx+1, scores[idx], t.MaxScore)
+		if scores[idx] < t.MaxScore {
+			log.Warnf("test %d did not finish with full score", idx+1)
+		}
 	}
 
+	log.Info("all tests done, printing scores again")
+
+	sum := 0.0
+	sumWeights := 0.0
+	for idx, score := range scores {
+		log.Infof("test %d: score=%d/%d, weight=%d", idx+1, score, tests[idx].MaxScore, tests[idx].Weight)
+		sum += float64(score) / float64(tests[idx].MaxScore) * float64(tests[idx].Weight)
+		sumWeights += float64(tests[idx].Weight)
+	}
+	sumWeights -= float64(extraCredit)
+	res := sum / sumWeights
+
+	log.Infof("Final score overall: %.1f/10", res*10.0)
 }

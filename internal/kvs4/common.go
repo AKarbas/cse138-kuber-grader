@@ -90,7 +90,7 @@ func ValidateView(viewResp kvs4client.ViewResp, conf ViewConfig) error {
 		shardNodes := len(shard.Nodes)
 		if shardNodes < minNodesPerShard || shardNodes > maxNodesPerShard {
 			return fmt.Errorf("invalid number of nodes in shard; n=%d, s=%d, shardNodes=%v "+
-				"(expected %d <= shardNodes <= %d",
+				"(expected: %d <= shardNodes <= %d)",
 				conf.NumNodes, conf.NumShards, shard.Nodes, minNodesPerShard, maxNodesPerShard)
 		}
 		nodeCounter += shardNodes
@@ -215,4 +215,24 @@ func max(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func GenPartitions(v kvs4client.ViewResp) [][]string {
+	numParts := -1
+	for _, s := range v.View {
+		if numParts == -1 || numParts > len(s.Nodes) {
+			numParts = len(s.Nodes)
+		}
+	}
+	res := make([][]string, numParts)
+	for _, s := range v.View {
+		for idx, node := range s.Nodes {
+			targetIdx := idx
+			if targetIdx >= numParts {
+				targetIdx = numParts - 1
+			}
+			res[targetIdx] = append(res[targetIdx], node)
+		}
+	}
+	return res
 }
