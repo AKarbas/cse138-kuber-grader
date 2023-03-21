@@ -22,7 +22,7 @@ var DeleteKey = kvs3client.DeleteKey
 var KvsDataUrl = kvs3client.KvsDataUrl
 
 var dataHttpClient = http.Client{
-	Timeout: 23 * time.Second,
+	Timeout: 25 * time.Second,
 }
 
 func GetKeyList(dest string, cm CausalMetadata) (KeyListBody, int, error) {

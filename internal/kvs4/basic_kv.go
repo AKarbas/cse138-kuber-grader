@@ -11,7 +11,7 @@ import (
 
 const BasicKVMaxScore = 60
 
-func BasicKvTest(c Config, v ViewConfig) int {
+func BasicKvTest(c TestConfig, v ViewConfig) int {
 	log := logrus.New().WithFields(logrus.Fields{
 		"test":  "BasicKeyVal",
 		"group": c.GroupName,
@@ -34,7 +34,7 @@ func BasicKvTest(c Config, v ViewConfig) int {
 	k8sClient := k8s.Client{}
 	score := 0
 	defer func(s *int) {
-		log.WithField("finalScore", s).Info("test completed.")
+		log.WithField("finalScore", *s).Info("test completed.")
 	}(&score)
 
 	if err := PreTestCleanup(k8sClient, c.Namespace, c.GroupName); err != nil {

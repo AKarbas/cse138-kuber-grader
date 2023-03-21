@@ -21,20 +21,20 @@ func (c *Client) ListPods(ns string, labels map[string]string) (*v1.PodList, err
 	})
 }
 
-type AddrLabelMapping struct {
-	Addr  string
+type PodMetaDetails struct {
+	Ip    string
 	Batch int
 	Index int
 }
 
 func (c *Client) ListAddressGroupIndexMappings(
 	ns string, labels map[string]string,
-) (map[string]AddrLabelMapping, error) {
+) (map[string]PodMetaDetails, error) {
 	c.LazyInit()
 	deadline := time.NewTimer(20 * time.Second)
 	defer deadline.Stop()
 
-	res := make(map[string]AddrLabelMapping)
+	res := make(map[string]PodMetaDetails)
 	for {
 		select {
 		case <-deadline.C:
@@ -56,12 +56,12 @@ func (c *Client) ListAddressGroupIndexMappings(
 					return nil, fmt.Errorf("pod has no label with key=%s", l)
 				}
 			}
-			podInfo := AddrLabelMapping{
-				Addr:  fmt.Sprintf("%s:%s", pod.Status.PodIP, PodPort),
+			podInfo := PodMetaDetails{
+				Ip:    pod.Status.PodIP,
 				Batch: IntFromIntLabel(pod.ObjectMeta.Labels[BatchKey]),
 				Index: IntFromIntLabel(pod.ObjectMeta.Labels[IndexKey]),
 			}
-			res[podInfo.Addr] = podInfo
+			res[fmt.Sprintf("%s:%s", pod.Status.PodIP, PodPort)] = podInfo
 		}
 		if ready {
 			break
@@ -70,7 +70,7 @@ func (c *Client) ListAddressGroupIndexMappings(
 	return res, nil
 }
 
-func PodAddrsFromMappings(m map[string]AddrLabelMapping) []string {
+func PodAddrsFromMappings(m map[string]PodMetaDetails) []string {
 	var res []string
 	for k, _ := range m {
 		res = append(res, k)

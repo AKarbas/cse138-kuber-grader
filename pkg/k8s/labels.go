@@ -35,7 +35,7 @@ func PodLabelsNoBatch(groupName string, idx int) map[string]string {
 }
 
 func IntFromIntLabel(il string) int {
-	res, err := strconv.Atoi(il[1:])
+	res, err := strconv.Atoi(il)
 	if err != nil {
 		panic(err)
 	}

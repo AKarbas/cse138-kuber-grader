@@ -11,7 +11,7 @@ import (
 
 const AvailabilityMaxScore = 50
 
-func AvailabilityTest(c Config, v ViewConfig) int {
+func AvailabilityTest(c TestConfig, v ViewConfig) int {
 	log := logrus.New().WithFields(logrus.Fields{
 		"test":  "Availability",
 		"group": c.GroupName,
@@ -35,7 +35,7 @@ func AvailabilityTest(c Config, v ViewConfig) int {
 	k8sClient := k8s.Client{}
 	score := 0
 	defer func(s *int) {
-		log.WithField("finalScore", s).Info("test completed.")
+		log.WithField("finalScore", *s).Info("test completed.")
 	}(&score)
 
 	if err := PreTestCleanup(k8sClient, c.Namespace, c.GroupName); err != nil {
@@ -197,12 +197,16 @@ func AvailabilityTest(c Config, v ViewConfig) int {
 }
 
 func partitionNodes(
-	kc k8s.Client, c Config, v kvs4client.ViewResp, m map[string]k8s.AddrLabelMapping,
+	kc k8s.Client, c TestConfig, v kvs4client.ViewResp, m map[string]k8s.PodMetaDetails,
 ) ([][]string, error) {
 	parts := genPartitions(v)
 	for _, part := range parts {
+		var partIps []string
 		for _, addr := range part {
-			if err := kc.IsolatePodByIps(c.Namespace, c.GroupName, m[addr].Index, part); err != nil {
+			partIps = append(partIps, m[addr].Ip)
+		}
+		for _, addr := range part {
+			if err := kc.IsolatePodByIps(c.Namespace, c.GroupName, m[addr].Index, partIps); err != nil {
 				return nil, err
 			}
 		}

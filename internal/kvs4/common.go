@@ -19,14 +19,14 @@ func (vc ViewConfig) String() string {
 	return fmt.Sprintf("NumNodes: %d, NumShards: %d", vc.NumNodes, vc.NumShards)
 }
 
-type Config struct {
+type TestConfig struct {
 	Registry  string
 	GroupName string
 	ImageTag  string
 	Namespace string
 }
 
-func (c Config) Image() string {
+func (c TestConfig) Image() string {
 	if c.Registry == "" {
 		return fmt.Sprintf("%s:%s", c.GroupName, c.ImageTag)
 	}
@@ -162,9 +162,9 @@ func SprayGets(conf SprayConfig) (kvs4client.CausalMetadata, error) {
 	cm := conf.cm
 	receivedVals := make(map[string]string)
 	for i := conf.minI; i <= conf.maxI; i++ {
-		acceptedVals := make([]string, conf.maxJ-conf.minJ)
-		for j := conf.minJ; j < conf.maxJ; j++ {
-			acceptedVals[j-conf.minJ] = Val(i, j)
+		var acceptedVals []string
+		for j := conf.minJ; j <= conf.maxJ; j++ {
+			acceptedVals = append(acceptedVals, Val(i, j))
 		}
 		if contains(conf.acceptedStatusCodes, 500) {
 			acceptedVals = append(acceptedVals, "")

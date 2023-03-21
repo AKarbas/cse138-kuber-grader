@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -11,6 +12,7 @@ import (
 func main() {
 	groupName := os.Getenv("GROUP")
 	if groupName == "" {
+		fmt.Println("failed: expected group name in environment variable GROUP")
 		os.Exit(1)
 	}
 	log := logrus.New().WithFields(logrus.Fields{
