@@ -13,7 +13,7 @@ const ViewChangeMaxScore = 40
 
 func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 	log := logrus.New().WithFields(logrus.Fields{
-		"test":  "ViewChange",
+		"test":  "viewChange",
 		"group": c.GroupName,
 	})
 	log.WithFields(logrus.Fields{

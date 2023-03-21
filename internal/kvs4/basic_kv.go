@@ -13,7 +13,7 @@ const BasicKVMaxScore = 70
 
 func BasicKvTest(c TestConfig, v ViewConfig) int {
 	log := logrus.New().WithFields(logrus.Fields{
-		"test":  "BasicKeyVal",
+		"test":  "basicKeyVal",
 		"group": c.GroupName,
 	})
 	log.WithField("viewConfig", v.String()).Info(

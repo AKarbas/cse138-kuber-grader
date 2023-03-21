@@ -13,7 +13,7 @@ const AvailabilityMaxScore = 50
 
 func AvailabilityTest(c TestConfig, v ViewConfig) int {
 	log := logrus.New().WithFields(logrus.Fields{
-		"test":  "Availability",
+		"test":  "availability",
 		"group": c.GroupName,
 	})
 	log.WithField("viewConfig", v.String()).Info(
