@@ -9,7 +9,7 @@ import (
 	"github.com/AKarbas/cse138-kuber-grader/pkg/kvs4client"
 )
 
-const BasicKVMaxScore = 60
+const BasicKVMaxScore = 70
 
 func BasicKvTest(c TestConfig, v ViewConfig) int {
 	log := logrus.New().WithFields(logrus.Fields{
@@ -27,8 +27,9 @@ func BasicKvTest(c TestConfig, v ViewConfig) int {
 			" and expect latest values; " +
 			"6. wait for eventual consistency (10s); " +
 			"7. do reads on writes of step 3 (from all nodes, all with CM={}) and expect consistent values from" +
-			" all nodes (tie-breaking). " +
-			"Steps 1-5 and 7 each have 10 points for a total of 60.",
+			" all nodes (tie-breaking); " +
+			"8. get key list and expect total to be 2N. " +
+			"Steps 1-5 and 7-8 each have 10 points for a total of 70.",
 	)
 
 	k8sClient := k8s.Client{}
@@ -157,6 +158,15 @@ func BasicKvTest(c TestConfig, v ViewConfig) int {
 	}
 	score += 10
 	log.WithField("score", score).Info("score +10 - get independent key-value pairs successful")
+
+	// Key List
+	log.Info("getting key list from all nodes and expecting 2N nodes in total")
+	if err := TestKeyLists(addresses, 1, 2*v.NumNodes); err != nil {
+		log.Errorf("test failed: %v", err)
+		return score
+	}
+	score += 10
+	log.WithField("score", score).Info("score +10 - get key lists successful")
 
 	return score
 }

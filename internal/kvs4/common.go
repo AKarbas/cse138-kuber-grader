@@ -3,6 +3,7 @@ package kvs4
 import (
 	"fmt"
 	"reflect"
+	"sort"
 
 	"k8s.io/utils/strings/slices"
 
@@ -137,7 +138,7 @@ func SprayPuts(conf SprayConfig) (kvs4client.CausalMetadata, error) {
 				return nil, fmt.Errorf("%s, got error: %v", errorDetails, err)
 			}
 			if !contains(conf.acceptedStatusCodes, statusCode) {
-				return nil, fmt.Errorf("%s, expected status code in [%v] but got %d",
+				return nil, fmt.Errorf("%s, expected status code in %v but got %d",
 					errorDetails, conf.acceptedStatusCodes, statusCode)
 			}
 		}
@@ -188,7 +189,7 @@ func SprayGets(conf SprayConfig) (kvs4client.CausalMetadata, error) {
 			return nil, fmt.Errorf("%s, got error: %v", errorDetails, err)
 		}
 		if !contains(conf.acceptedStatusCodes, statusCode) {
-			return nil, fmt.Errorf("%s, expected status code in [%v] but got %d",
+			return nil, fmt.Errorf("%s, expected status code in %v but got %d",
 				errorDetails, conf.acceptedStatusCodes, statusCode)
 		}
 		if !slices.Contains(acceptedVals, val) {
@@ -235,4 +236,59 @@ func GenPartitions(v kvs4client.ViewResp) [][]string {
 		}
 	}
 	return res
+}
+
+func TestKeyLists(addresses []string, minI, maxI int) error {
+	shardKeys := make(map[string][]string)
+	shardCounts := make(map[string]int)
+	for idx, addr := range addresses {
+		res, statusCode, err := kvs4client.GetKeyList(addr, nil)
+		if err != nil {
+			return fmt.Errorf("failed to get key list from node %d: %w", idx+1, err)
+		}
+		if statusCode != 200 {
+			return fmt.Errorf("bad status code for key list from node %d: %d (expected 200)", idx+1, 200)
+		}
+		if res.Count != len(res.Keys) {
+			return fmt.Errorf("count (%d) != len(keys) (%d)", res.Count, len(res.Keys))
+		}
+		sort.Strings(res.Keys)
+		var prevKeys []string
+		var ok bool
+		if prevKeys, ok = shardKeys[res.ShardId]; !ok {
+			shardKeys[res.ShardId] = res.Keys
+			shardCounts[res.ShardId] = res.Count
+			continue
+		}
+		if res.Count != shardCounts[res.ShardId] {
+			return fmt.Errorf("number of keys in shard inconsistent across nodes (got=%d, expected=%d)",
+				res.Count, shardCounts[res.ShardId])
+		}
+		if !reflect.DeepEqual(res.Keys, prevKeys) {
+			return fmt.Errorf("keys in shard inconsistent across nodes")
+		}
+	}
+
+	totalCount := 0
+	for _, cnt := range shardCounts {
+		totalCount += cnt
+	}
+	if totalCount != (maxI - minI + 1) {
+		return fmt.Errorf("total number of keys in shards invalid, expected=%d, got=%d",
+			maxI-minI+1, totalCount)
+	}
+
+	allKeys := make(map[string]struct{})
+	exists := struct{}{}
+	for _, keyList := range shardKeys {
+		for _, key := range keyList {
+			if _, ok := allKeys[key]; !ok {
+				allKeys[key] = exists
+				continue
+			}
+			return fmt.Errorf("key %s exists in more than one shard", key)
+		}
+	}
+
+	return nil
 }
