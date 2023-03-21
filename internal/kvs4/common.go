@@ -267,11 +267,11 @@ func TestKeyLists(addresses []string, minI, maxI int) (map[string]map[string]str
 			continue
 		}
 		if res.Count != shardCounts[res.ShardId] {
-			return nil, fmt.Errorf("number of keys in shard inconsistent across nodes (got=%d, expected=%d)",
-				res.Count, shardCounts[res.ShardId])
+			return nil, fmt.Errorf("number of keys in shard inconsistent across nodes (got=%d, expected=%d, shardId=%s)",
+				res.Count, shardCounts[res.ShardId], res.ShardId)
 		}
 		if !reflect.DeepEqual(keySet, prevKeys) {
-			return nil, fmt.Errorf("keys in shard inconsistent across nodes")
+			return nil, fmt.Errorf("keys in shard inconsistent across nodes (shardId=%s)", res.ShardId)
 		}
 	}
 

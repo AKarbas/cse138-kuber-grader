@@ -10,7 +10,7 @@ import (
 	"github.com/AKarbas/cse138-kuber-grader/pkg/kvs4client"
 )
 
-const KeyDistMaxScore = 0
+const KeyDistMaxScore = 30
 
 func KeyDistTest(c TestConfig, n1 int) int {
 	log := logrus.New().WithFields(logrus.Fields{
@@ -100,8 +100,7 @@ func KeyDistTest(c TestConfig, n1 int) int {
 		acceptedStatusCodes: []int{200, 201},
 	}
 	log.Infof("putting 20K independent key-value pairs (CM={}) to all nodes, minKeyIndex=%d, maxKeyIndex=%d, "+
-		"valIndex=%d",
-		sprayConf.minI, sprayConf.maxI, sprayConf.maxJ)
+		"valIndex=%d", sprayConf.minI, sprayConf.maxI, sprayConf.maxJ)
 	if _, err = SprayPuts(sprayConf); err != nil {
 		log.Errorf("failed to put independent key-value pairs: %v", err)
 		return score
