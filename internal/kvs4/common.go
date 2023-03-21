@@ -209,3 +209,10 @@ func SprayGets(conf SprayConfig) (kvs4client.CausalMetadata, error) {
 	}
 	return cm, nil
 }
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
