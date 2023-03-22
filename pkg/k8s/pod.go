@@ -12,7 +12,7 @@ import (
 	applymetav1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-const PodPort = "9090"
+const PodPort = "8080"
 
 func (c *Client) ListPods(ns string, labels map[string]string) (*v1.PodList, error) {
 	c.LazyInit()
