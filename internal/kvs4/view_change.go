@@ -166,7 +166,7 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 	if killNodes {
 		view2Addrs = append(toKeep, allAddrs[v1.NumNodes:]...)
 	}
-	if len(view1Addrs) != v1.NumNodes {
+	if len(view2Addrs) != v2.NumNodes {
 		panic(fmt.Errorf("too few nodeAddrs for view 2, addrs=%v, n2=%d", view2Addrs, v2.NumNodes))
 	}
 	statusCode, err = kvs4client.PutView(view2Addrs[0], kvs4client.ViewReq{Nodes: view2Addrs, NumShards: v2.NumShards})

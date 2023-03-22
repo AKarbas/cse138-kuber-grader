@@ -167,7 +167,7 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 	// GET view 2
 	log.Info("getting views from nodes and checking consistency")
 	var view2 kvs4client.ViewResp
-	if view2, err = TestViewsConsistent(view1Addrs, v1); err != nil {
+	if view2, err = TestViewsConsistent(view2Addrs, v2); err != nil {
 		log.Errorf("test failed: %v", err)
 		return score
 	}
