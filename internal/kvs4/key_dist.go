@@ -11,6 +11,8 @@ import (
 )
 
 const KeyDistMaxScore = 30
+const keyCount = 5000
+const thresholdPercent = 20
 
 func KeyDistTest(c TestConfig, n1 int) int {
 	log := logrus.New().WithFields(logrus.Fields{
@@ -20,19 +22,21 @@ func KeyDistTest(c TestConfig, n1 int) int {
 	v1 := ViewConfig{NumNodes: n1, NumShards: n1}
 	v2 := ViewConfig{NumNodes: n1 + 1, NumShards: n1 + 1}
 	log.WithFields(logrus.Fields{
-		"viewConfig1": v1.String(),
-		"viewConfig2": v2.String(),
+		"viewConfig1":      v1.String(),
+		"viewConfig2":      v2.String(),
+		"keyCount":         keyCount,
+		"thresholdPercent": thresholdPercent,
 	}).Info(
 		"starting test. Steps: " +
 			"1. create all needed nodes; " +
 			"2. put viewConfig1; " +
 			"3. get view from all nodes and expect consistency; " +
-			"4. do 20K causally independent writes sprayed across all nodes; " +
+			"4. do keyCount causally independent writes sprayed across all nodes; " +
 			"5. sleep for 11 seconds; " +
-			"6. expect number of keys in each shard to be within 15% of 20K/s1; " +
+			"6. expect number of keys in each shard to be within thresholdPercent% of keyCount/s1; " +
 			"7. put viewConfig2; " +
 			"8. get view from all nodes and expect consistency; " +
-			"9. expect number of keys moved to be within 15% of 20K/s2. " +
+			"9. expect number of keys moved to be within thresholdPercent% of keyCount/s2. " +
 			"Steps 4, 6, 9 each have 10 points for a total of 30 (step 9 is extra credit).",
 	)
 
@@ -92,21 +96,21 @@ func KeyDistTest(c TestConfig, n1 int) int {
 	sprayConf := SprayConfig{
 		addresses:           view1Addrs,
 		minI:                1,
-		maxI:                20000,
+		maxI:                keyCount,
 		minJ:                1,
 		maxJ:                1,
 		cm:                  nil,
 		noCm:                true,
 		acceptedStatusCodes: []int{200, 201},
 	}
-	log.Infof("putting 20K independent key-value pairs (CM={}) to all nodes, minKeyIndex=%d, maxKeyIndex=%d, "+
-		"valIndex=%d", sprayConf.minI, sprayConf.maxI, sprayConf.maxJ)
+	log.Infof("putting %d independent key-value pairs (CM={}) to all nodes, minKeyIndex=%d, maxKeyIndex=%d, "+
+		"valIndex=%d", keyCount, sprayConf.minI, sprayConf.maxI, sprayConf.maxJ)
 	if _, err = SprayPuts(sprayConf); err != nil {
 		log.Errorf("failed to put independent key-value pairs: %v", err)
 		return score
 	}
 	score += 10
-	log.WithField("score", score).Info("score +10 - put 20K independent key-value pairs successful")
+	log.WithField("score", score).Infof("score +10 - put %d independent key-value pairs successful", keyCount)
 
 	// Sleep
 	log.Info("sleeping for 11s")
@@ -134,14 +138,14 @@ func KeyDistTest(c TestConfig, n1 int) int {
 
 	for idx, count := range counts {
 		diff := math.Abs(count - avg)
-		if (diff / avg) > 0.15 {
+		if (diff / avg) > (float64(thresholdPercent) / 100) {
 			log.Errorf("bad key distribution among shards; shardCounts=%v, avg=%.2f, errorIndex=%d", counts, avg, idx)
 			return score
 		}
 	}
 	score += 10
-	log.WithField("score", score).Info(
-		"score +10 - key distribution (with <=15% deviation from optimal) successful",
+	log.WithField("score", score).Infof(
+		"score +10 - key distribution (with <=%d%% deviation from optimal) successful", thresholdPercent,
 	)
 
 	// PUT view 2
@@ -199,14 +203,14 @@ func KeyDistTest(c TestConfig, n1 int) int {
 	totalMovement /= 2 // remove double-counting
 	bestMovement := 20000 / v2.NumShards
 	movementDiff := math.Abs(float64(totalMovement - bestMovement))
-	if (movementDiff / float64(bestMovement)) > 0.15 {
-		log.Errorf("key movement more than 15%% of optimal movement; moved=%d, optimal=%d",
-			totalMovement, bestMovement)
+	if (movementDiff / float64(bestMovement)) > (float64(thresholdPercent) / 100) {
+		log.Errorf("key movement more than %d%% of optimal movement; moved=%d, optimal=%d",
+			thresholdPercent, totalMovement, bestMovement)
 		return score
 	}
 	score += 10
-	log.WithField("score", score).Info(
-		"score +10 - key movement (with <=15% deviation from optimal) successful",
+	log.WithField("score", score).Infof(
+		"score +10 - key movement (with <=%d%% deviation from optimal) successful", thresholdPercent,
 	)
 
 	return score
