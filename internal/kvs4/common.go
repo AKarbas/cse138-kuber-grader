@@ -196,11 +196,9 @@ func SprayGets(conf SprayConfig) (kvs4client.CausalMetadata, error) {
 		}
 		if prevVal, ok := receivedVals[key]; !ok {
 			receivedVals[key] = val
-		} else {
-			if val != prevVal {
-				return nil, fmt.Errorf("%s, got inconsistent values %s and %s for key %s",
-					errorDetails, prevVal, val, key)
-			}
+		} else if val != prevVal {
+			return nil, fmt.Errorf("%s, got inconsistent values %s and %s for key %s",
+				errorDetails, prevVal, val, key)
 		}
 	}
 
