@@ -11,10 +11,9 @@ import (
 )
 
 const KeyDistMaxScore = 30
-const keyCount = 5000
 const thresholdPercent = 20
 
-func KeyDistTest(c TestConfig, n1 int) int {
+func KeyDistTest(c TestConfig, n1, numKeys int) int {
 	log := logrus.New().WithFields(logrus.Fields{
 		"test":  "keyDistribution",
 		"group": c.GroupName,
@@ -24,19 +23,19 @@ func KeyDistTest(c TestConfig, n1 int) int {
 	log.WithFields(logrus.Fields{
 		"viewConfig1":      v1.String(),
 		"viewConfig2":      v2.String(),
-		"keyCount":         keyCount,
+		"numKeys":          numKeys,
 		"thresholdPercent": thresholdPercent,
 	}).Info(
 		"starting test. Steps: " +
 			"1. create all needed nodes; " +
 			"2. put viewConfig1; " +
 			"3. get view from all nodes and expect consistency; " +
-			"4. do keyCount causally independent writes sprayed across all nodes; " +
+			"4. do numKeys causally independent writes sprayed across all nodes; " +
 			"5. sleep for 11 seconds; " +
-			"6. expect number of keys in each shard to be within thresholdPercent% of keyCount/s1; " +
+			"6. expect number of keys in each shard to be within thresholdPercent% of numKeys/s1; " +
 			"7. put viewConfig2; " +
 			"8. get view from all nodes and expect consistency; " +
-			"9. expect number of keys moved to be within thresholdPercent% of keyCount/s2. " +
+			"9. expect number of keys moved to be within thresholdPercent% of numKeys/s2. " +
 			"Steps 4, 6, 9 each have 10 points for a total of 30 (step 9 is extra credit).",
 	)
 
@@ -96,7 +95,7 @@ func KeyDistTest(c TestConfig, n1 int) int {
 	sprayConf := SprayConfig{
 		addresses:           view1Addrs,
 		minI:                1,
-		maxI:                keyCount,
+		maxI:                numKeys,
 		minJ:                1,
 		maxJ:                1,
 		cm:                  nil,
@@ -104,13 +103,13 @@ func KeyDistTest(c TestConfig, n1 int) int {
 		acceptedStatusCodes: []int{200, 201},
 	}
 	log.Infof("putting %d independent key-value pairs (CM={}) to all nodes, minKeyIndex=%d, maxKeyIndex=%d, "+
-		"valIndex=%d", keyCount, sprayConf.minI, sprayConf.maxI, sprayConf.maxJ)
+		"valIndex=%d", numKeys, sprayConf.minI, sprayConf.maxI, sprayConf.maxJ)
 	if _, err = SprayPuts(sprayConf); err != nil {
 		log.Errorf("failed to put independent key-value pairs: %v", err)
 		return score
 	}
 	score += 10
-	log.WithField("score", score).Infof("score +10 - put %d independent key-value pairs successful", keyCount)
+	log.WithField("score", score).Infof("score +10 - put %d independent key-value pairs successful", numKeys)
 
 	// Sleep
 	log.Info("sleeping for 11s")
