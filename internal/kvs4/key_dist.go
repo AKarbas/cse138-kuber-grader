@@ -151,7 +151,7 @@ func KeyDistTest(c TestConfig, n1 int) int {
 	// PUT view 2
 	log.Infof("putting view 2 to the nodes (%s)", v2.String())
 	view2Addrs := allAddrs[:v2.NumNodes]
-	statusCode, err = kvs4client.PutView(view1Addrs[v2.NumNodes-1], kvs4client.ViewReq{Nodes: view2Addrs, NumShards: v2.NumShards})
+	statusCode, err = kvs4client.PutView(view2Addrs[v2.NumNodes-1], kvs4client.ViewReq{Nodes: view2Addrs, NumShards: v2.NumShards})
 	if err != nil {
 		log.Errorf("failed to put view: %v", err)
 		return score
