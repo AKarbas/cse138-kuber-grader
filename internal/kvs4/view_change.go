@@ -71,7 +71,7 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 	allAddrs := k8s.PodAddrsFromMappings(allAddrMappings)
 	view1Addrs := allAddrs[:v1.NumNodes]
 	if len(view1Addrs) != v1.NumNodes {
-		panic(fmt.Errorf("too few nodeAddrs for view 1, addrs=%v, n1=%d", view1Addrs, v1.NumNodes))
+		panic(fmt.Errorf("nodeAddrs count wrong for view 1, addrs=%v, n1=%d", view1Addrs, v1.NumNodes))
 	}
 	statusCode, err := kvs4client.PutView(view1Addrs[v1.NumNodes-1], kvs4client.ViewReq{Nodes: view1Addrs, NumShards: v1.NumShards})
 	if err != nil {
@@ -164,10 +164,10 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 	log.Infof("putting view 2 to the nodes (%s)", v2.String())
 	view2Addrs := allAddrs[:v2.NumNodes]
 	if killNodes {
-		view2Addrs = append(toKeep, allAddrs[v1.NumNodes:]...)
+		view2Addrs = append(toKeep, allAddrs[v1.NumNodes:]...)[:v2.NumNodes]
 	}
 	if len(view2Addrs) != v2.NumNodes {
-		panic(fmt.Errorf("too few nodeAddrs for view 2, addrs=%v, n2=%d", view2Addrs, v2.NumNodes))
+		panic(fmt.Errorf("nodeAddrs count wrong for view 2, addrs=%v, n2=%d", view2Addrs, v2.NumNodes))
 	}
 	statusCode, err = kvs4client.PutView(view2Addrs[0], kvs4client.ViewReq{Nodes: view2Addrs, NumShards: v2.NumShards})
 	if err != nil {
