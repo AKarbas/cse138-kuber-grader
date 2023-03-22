@@ -123,7 +123,7 @@ func SprayPuts(conf SprayConfig) (kvs4client.CausalMetadata, error) {
 			val := Val(i, j)
 			errorDetails := fmt.Sprintf("failed to put key %s and val %s to node %s with CM from last access",
 				key, val, conf.addresses[nodeIdx])
-			if !conf.noCm {
+			if conf.noCm {
 				errorDetails = fmt.Sprintf("failed to put key %s and val %s to node %s with CM={}",
 					key, val, conf.addresses[nodeIdx])
 			}
@@ -173,7 +173,7 @@ func SprayGets(conf SprayConfig) (kvs4client.CausalMetadata, error) {
 		key := Key(i)
 		errorDetails := fmt.Sprintf("failed to get key %s from node %s with CM from last access (expecting val in %v)",
 			key, conf.addresses[nodeIdx], acceptedVals)
-		if !conf.noCm {
+		if conf.noCm {
 			errorDetails = fmt.Sprintf("failed to get key %s from node %s with CM={} (expecting val in %v)",
 				key, conf.addresses[nodeIdx], acceptedVals)
 		}
