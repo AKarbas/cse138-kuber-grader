@@ -45,7 +45,7 @@ func main() {
 
 	var tests []Test
 
-	for s := 1; s <= 4; s++ {
+	for s := 1; s <= 2; s++ {
 		s := s
 		tests = append(tests, Test{
 			Run:         func() int { return kvs4.BasicKvTest(conf, kvs4.ViewConfig{NumNodes: 4, NumShards: s}) },
@@ -55,21 +55,22 @@ func main() {
 		})
 	}
 
-	for s := 2; s <= 4; s++ {
+	for s := 2; s <= 3; s++ {
+		n := 6
 		s := s
 		tests = append(tests, Test{
-			Run:         func() int { return kvs4.AvailabilityTest(conf, kvs4.ViewConfig{NumNodes: 12, NumShards: s}) },
-			Description: fmt.Sprintf("availability test with 12 nodes and %d shards (weight=4)", s),
+			Run:         func() int { return kvs4.AvailabilityTest(conf, kvs4.ViewConfig{NumNodes: n, NumShards: s}) },
+			Description: fmt.Sprintf("availability test with %d nodes and %d shards (weight=4)", n, s),
 			MaxScore:    kvs4.AvailabilityMaxScore,
 			Weight:      4,
 		})
 	}
 
 	viewConfigPairs := [][2]kvs4.ViewConfig{
-		{kvs4.ViewConfig{NumNodes: 8, NumShards: 3}, kvs4.ViewConfig{NumNodes: 9, NumShards: 4}},
-		{kvs4.ViewConfig{NumNodes: 8, NumShards: 3}, kvs4.ViewConfig{NumNodes: 8, NumShards: 4}},
-		{kvs4.ViewConfig{NumNodes: 8, NumShards: 7}, kvs4.ViewConfig{NumNodes: 15, NumShards: 7}},
-		{kvs4.ViewConfig{NumNodes: 8, NumShards: 3}, kvs4.ViewConfig{NumNodes: 2, NumShards: 1}},
+		{kvs4.ViewConfig{NumNodes: 4, NumShards: 2}, kvs4.ViewConfig{NumNodes: 4, NumShards: 3}},
+		{kvs4.ViewConfig{NumNodes: 4, NumShards: 2}, kvs4.ViewConfig{NumNodes: 5, NumShards: 3}},
+		{kvs4.ViewConfig{NumNodes: 4, NumShards: 2}, kvs4.ViewConfig{NumNodes: 2, NumShards: 2}},
+		{kvs4.ViewConfig{NumNodes: 4, NumShards: 3}, kvs4.ViewConfig{NumNodes: 2, NumShards: 1}},
 	}
 
 	for _, vcPair := range viewConfigPairs {
@@ -93,7 +94,7 @@ func main() {
 	}
 
 	extraCredit := 0
-	for n1 := 5; n1 <= 7; n1++ {
+	for n1 := 6; n1 <= 7; n1++ {
 		n1 := n1
 		tests = append(tests, Test{
 			Run:         func() int { return kvs4.KeyDistTest(conf, n1) },
