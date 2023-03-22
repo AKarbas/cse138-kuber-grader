@@ -11,7 +11,7 @@ import (
 )
 
 type ViewReq struct {
-	Nodes     []string `json:"view"`
+	Nodes     []string `json:"nodes"`
 	NumShards int      `json:"num_shards"`
 }
 
