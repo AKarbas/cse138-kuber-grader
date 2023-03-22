@@ -105,6 +105,7 @@ func main() {
 		extraCredit += 1
 	}
 
+	log.Infof("running a total of %d tests", len(tests))
 	scores := make([]int, len(tests))
 	for idx, t := range tests {
 		log.Infof("starting test %d: %s", idx+1, t.Description)
