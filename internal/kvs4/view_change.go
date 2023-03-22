@@ -1,6 +1,7 @@
 package kvs4
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -69,6 +70,9 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 	log.Infof("putting view 1 to the nodes (%s)", v1.String())
 	allAddrs := k8s.PodAddrsFromMappings(allAddrMappings)
 	view1Addrs := allAddrs[:v1.NumNodes]
+	if len(view1Addrs) != v1.NumNodes {
+		panic(fmt.Errorf("too few nodeAddrs for view 1, addrs=%v, n1=%d", view1Addrs, v1.NumNodes))
+	}
 	statusCode, err := kvs4client.PutView(view1Addrs[v1.NumNodes-1], kvs4client.ViewReq{Nodes: view1Addrs, NumShards: v1.NumShards})
 	if err != nil {
 		log.Errorf("failed to put view: %v", err)
@@ -161,6 +165,9 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 	view2Addrs := allAddrs[:v2.NumNodes]
 	if killNodes {
 		view2Addrs = append(toKeep, allAddrs[v1.NumNodes:]...)
+	}
+	if len(view1Addrs) != v1.NumNodes {
+		panic(fmt.Errorf("too few nodeAddrs for view 2, addrs=%v, n2=%d", view2Addrs, v2.NumNodes))
 	}
 	statusCode, err = kvs4client.PutView(view2Addrs[0], kvs4client.ViewReq{Nodes: view2Addrs, NumShards: v2.NumShards})
 	if err != nil {

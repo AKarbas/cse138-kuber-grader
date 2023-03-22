@@ -112,7 +112,8 @@ func main() {
 		scores[idx] = t.Run()
 		log.Infof("finished test %d with score %d/%d", idx+1, scores[idx], t.MaxScore)
 		if scores[idx] < t.MaxScore {
-			log.Warnf("test %d did not finish with full score", idx+1)
+			log.Warnf("test %d did not finish with full score (%d/%d) (test description: %s)",
+				idx+1, scores[idx], t.MaxScore, t.Description)
 		}
 	}
 
