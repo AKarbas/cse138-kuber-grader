@@ -216,9 +216,9 @@ func max(a, b int) int {
 }
 
 func GenPartitions(v kvs4client.ViewResp) [][]string {
-	numParts := -1
+	numParts := 0
 	for _, s := range v.View {
-		if numParts == -1 || numParts > len(s.Nodes) {
+		if numParts == 0 || numParts > len(s.Nodes) {
 			numParts = len(s.Nodes)
 		}
 	}

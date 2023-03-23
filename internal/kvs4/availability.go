@@ -81,10 +81,10 @@ func AvailabilityTest(c TestConfig, v ViewConfig) int {
 	log.Info("getting views from nodes and checking consistency")
 	var view kvs4client.ViewResp
 	if view, err = TestViewsConsistent(addresses, v); err != nil {
-		log.Warnf("get view failed: %v", err)
-	} else {
-		log.Info("get view from all nodes successful and all views consistent")
+		log.Errorf("get view failed: %v", err)
+		return score
 	}
+	log.Info("get view from all nodes successful and all views consistent")
 
 	// Partition
 	var partitions [][]string
