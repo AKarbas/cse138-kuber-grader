@@ -94,10 +94,10 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 	log.Info("getting views from nodes and checking consistency")
 	var view kvs4client.ViewResp
 	if view, err = TestViewsConsistent(view1Addrs, v1); err != nil {
-		log.Errorf("test failed: %v", err)
-		return score
+		log.Warnf("get view failed: %v", err)
+	} else {
+		log.Info("get view from all nodes successful and all views consistent")
 	}
-	log.Info("get view from all nodes successful and all views consistent")
 
 	// Independent Puts
 	independentSprayConf := SprayConfig{
@@ -190,11 +190,11 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 	// GET view2
 	log.Info("getting views from nodes and checking consistency")
 	if view, err = TestViewsConsistent(view2Addrs, v2); err != nil {
-		log.Errorf("test failed: %v", err)
-		return score
+		log.Warnf("get view failed: %v", err)
+	} else {
+		score += 10
+		log.WithField("score", score).Info("score +10 - get view from all nodes successful and all views consistent")
 	}
-	score += 10
-	log.WithField("score", score).Info("score +10 - get view from all nodes successful and all views consistent")
 
 	// Dependent Gets
 	dependentSprayConf.addresses = view2Addrs

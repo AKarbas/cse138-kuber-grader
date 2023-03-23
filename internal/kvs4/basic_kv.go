@@ -81,11 +81,11 @@ func BasicKvTest(c TestConfig, v ViewConfig) int {
 	// GET view
 	log.Info("getting views from nodes and checking consistency")
 	if _, err := TestViewsConsistent(addresses, v); err != nil {
-		log.Errorf("test failed: %v", err)
-		return score
+		log.Warnf("get view error: %v", err)
+	} else {
+		score += 10
+		log.WithField("score", score).Info("score +10 - get view from all nodes successful and all views consistent")
 	}
-	score += 10
-	log.WithField("score", score).Info("score +10 - get view from all nodes successful and all views consistent")
 
 	// Independent Puts
 	independentSprayConf := SprayConfig{
@@ -137,11 +137,11 @@ func BasicKvTest(c TestConfig, v ViewConfig) int {
 		"minKeyIndex=%d, maxKeyIndex=%d, expectedValIndex=%d",
 		dependentSprayConf.minI, dependentSprayConf.maxI, dependentSprayConf.maxJ)
 	if dependentSprayConf.cm, err = SprayGets(dependentSprayConf); err != nil {
-		log.Errorf("failed to get dependent key-value pairs: %v", err)
-		return score
+		log.Warnf("failed to get dependent key-value pairs: %v", err)
+	} else {
+		score += 10
+		log.WithField("score", score).Info("score +10 - get dependent key-value pairs successful")
 	}
-	score += 10
-	log.WithField("score", score).Info("score +10 - get dependent key-value pairs successful")
 
 	// Sleep
 	log.Info("sleeping for 11s (to let nodes become eventually consistent)")
@@ -153,16 +153,16 @@ func BasicKvTest(c TestConfig, v ViewConfig) int {
 		"minKeyIndex=%d, maxKeyIndex=%d, minValIndexPerKey=%d, maxValIndexPerKey=%d",
 		independentSprayConf.minI, independentSprayConf.maxI, independentSprayConf.minJ, independentSprayConf.maxJ)
 	if _, err := SprayGets(independentSprayConf); err != nil {
-		log.Errorf("failed to get independent key-value pairs: %v", err)
-		return score
+		log.Warnf("failed to get independent key-value pairs: %v", err)
+	} else {
+		score += 10
+		log.WithField("score", score).Info("score +10 - get independent key-value pairs successful")
 	}
-	score += 10
-	log.WithField("score", score).Info("score +10 - get independent key-value pairs successful")
 
 	// Key List
 	log.Info("getting key list from all nodes and expecting 2N nodes in total")
 	if _, err = TestKeyLists(addresses, 1, 2*v.NumNodes); err != nil {
-		log.Errorf("test failed: %v", err)
+		log.Errorf("key list failed: %v", err)
 		return score
 	}
 	score += 10

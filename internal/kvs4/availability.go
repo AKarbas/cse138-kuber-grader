@@ -81,16 +81,16 @@ func AvailabilityTest(c TestConfig, v ViewConfig) int {
 	log.Info("getting views from nodes and checking consistency")
 	var view kvs4client.ViewResp
 	if view, err = TestViewsConsistent(addresses, v); err != nil {
-		log.Errorf("test failed: %v", err)
-		return score
+		log.Warnf("get view failed: %v", err)
+	} else {
+		log.Info("get view from all nodes successful and all views consistent")
 	}
-	log.Info("get view from all nodes successful and all views consistent")
 
 	// Partition
 	var partitions [][]string
 	log.Info("Partitioning the nodes")
 	if partitions, err = partitionNodes(k8sClient, c, view, addrMappings); err != nil {
-		log.Errorf("failed to isolate partitions: %v", err)
+		log.Errorf("failed to isolate pod partitions: %v", err)
 		return score
 	}
 
@@ -158,7 +158,7 @@ func AvailabilityTest(c TestConfig, v ViewConfig) int {
 	// Heal network
 	log.Info("healing network partitions")
 	if err = k8sClient.DeleteNetPolicies(c.Namespace, k8s.GroupLabels(c.GroupName)); err != nil {
-		log.Errorf("failed to delete network policies: %v", err)
+		log.Errorf("failed to delete pod network policies: %v", err)
 		return score
 	}
 	// Sleep

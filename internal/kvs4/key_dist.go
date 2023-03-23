@@ -87,7 +87,7 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 	log.Info("getting views from nodes and checking consistency")
 	var view1 kvs4client.ViewResp
 	if view1, err = TestViewsConsistent(view1Addrs, v1); err != nil {
-		log.Errorf("test failed: %v", err)
+		log.Errorf("get view failed: %v", err)
 		return score
 	}
 	log.Info("get view from all nodes successful and all views consistent")
@@ -139,17 +139,20 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 	}
 	avg := sum / float64(len(counts))
 
+	success := true
 	for idx, count := range counts {
 		diff := math.Abs(count - avg)
 		if (diff / avg) > (float64(thresholdPercent) / 100) {
-			log.Errorf("bad key distribution among shards; shardCounts=%v, avg=%.2f, errorIndex=%d", counts, avg, idx)
-			return score
+			log.Warnf("bad key distribution among shards; shardCounts=%v, avg=%.2f, errorIndex=%d", counts, avg, idx)
+			success = false
 		}
 	}
-	score += 10
-	log.WithField("score", score).Infof(
-		"score +10 - key distribution (with <=%d%% deviation from optimal) successful", thresholdPercent,
-	)
+	if success {
+		score += 10
+		log.WithField("score", score).Infof(
+			"score +10 - key distribution (with <=%d%% deviation from optimal) successful", thresholdPercent,
+		)
+	}
 
 	// PUT view 2
 	log.Infof("putting view 2 to the nodes (%s)", v2.String())
@@ -172,7 +175,7 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 	log.Info("getting views from nodes and checking consistency")
 	var view2 kvs4client.ViewResp
 	if view2, err = TestViewsConsistent(view2Addrs, v2); err != nil {
-		log.Errorf("test failed: %v", err)
+		log.Errorf("get view failed: %v", err)
 		return score
 	}
 	log.Info("get view from all nodes successful and all views consistent")
@@ -200,17 +203,20 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 	}
 	avg = sum / float64(len(counts))
 
+	success = true
 	for idx, count := range counts {
 		diff := math.Abs(count - avg)
 		if (diff / avg) > (float64(thresholdPercent) / 100) {
-			log.Errorf("bad key distribution among shards; shardCounts=%v, avg=%.2f, errorIndex=%d", counts, avg, idx)
-			return score
+			log.Warnf("bad key distribution among shards; shardCounts=%v, avg=%.2f, errorIndex=%d", counts, avg, idx)
+			success = false
 		}
 	}
-	score += 10
-	log.WithField("score", score).Infof(
-		"score +10 - key distribution (with <=%d%% deviation from optimal) successful", thresholdPercent,
-	)
+	if success {
+		score += 10
+		log.WithField("score", score).Infof(
+			"score +10 - key distribution (with <=%d%% deviation from optimal) successful", thresholdPercent,
+		)
+	}
 
 	log.Info("checking key movement during reshard")
 	totalMovement := len(nodeKeys2[view2Addrs[v2.NumNodes-1]]) // added to last node
@@ -226,18 +232,21 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 		totalMovement += len(ks2) - inKs2 // not in keySet1 -- added to node
 	}
 
+	success = true
 	totalMovement /= 2 // remove double-counting
 	bestMovement := numKeys / v2.NumShards
 	movementThreshold := float64(bestMovement) * (1 + (float64(thresholdPercent) / 100))
 	if float64(totalMovement) > movementThreshold {
-		log.Errorf("key movement more than %d%% of optimal movement; moved=%d, optimal=%d",
+		log.Warnf("key movement more than %d%% of optimal movement; moved=%d, optimal=%d",
 			thresholdPercent, totalMovement, bestMovement)
-		return score
+		success = false
 	}
-	score += 10
-	log.WithField("score", score).Infof(
-		"score +10 - key movement (with <=%d%% deviation from optimal) successful", thresholdPercent,
-	)
+	if success {
+		score += 10
+		log.WithField("score", score).Infof(
+			"score +10 - key movement (with <=%d%% deviation from optimal) successful", thresholdPercent,
+		)
+	}
 
 	return score
 }
