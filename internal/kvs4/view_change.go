@@ -94,6 +94,10 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 	log.Info("getting views from nodes and checking consistency")
 	var view kvs4client.ViewResp
 	if view, err = TestViewsConsistent(view1Addrs, v1); err != nil {
+		if killNodes { // The rest of the test needs the view and it's not usable.
+			log.Errorf("get view failed: %v", err)
+			return score
+		}
 		log.Warnf("get view failed: %v", err)
 	} else {
 		log.Info("get view from all nodes successful and all views consistent")
@@ -143,14 +147,16 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 	log.Info("sleeping for 11s")
 	time.Sleep(11 * time.Second)
 
-	// Delete extra nodes
-	var toKeep []string
-	var toKill []string
-	for _, s := range view.View {
-		toKeep = append(toKeep, s.Nodes[0])
-		toKill = append(toKill, s.Nodes[1:]...)
-	}
+	// Kill extra nodes
+	view2Addrs := allAddrs[:v2.NumNodes]
 	if killNodes {
+		var toKeep []string
+		var toKill []string
+		for _, s := range view.View {
+			toKeep = append(toKeep, s.Nodes[0])
+			toKill = append(toKill, s.Nodes[1:]...)
+		}
+		view2Addrs = append(toKeep, allAddrs[v1.NumNodes:]...)[:v2.NumNodes]
 		log.Info("killing all but one node from each shard")
 		for _, addr := range toKill {
 			if err = k8sClient.DeletePods(c.Namespace, k8s.PodLabelsNoBatch(c.GroupName, allAddrMappings[addr].Index)); err != nil {
@@ -162,10 +168,6 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 
 	// PUT view 2
 	log.Infof("putting view 2 to the nodes (%s)", v2.String())
-	view2Addrs := allAddrs[:v2.NumNodes]
-	if killNodes {
-		view2Addrs = append(toKeep, allAddrs[v1.NumNodes:]...)[:v2.NumNodes]
-	}
 	if len(view2Addrs) != v2.NumNodes {
 		panic(fmt.Errorf("nodeAddrs count wrong for view 2, addrs=%v, n2=%d", view2Addrs, v2.NumNodes))
 	}
@@ -189,7 +191,7 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 
 	// GET view2
 	log.Info("getting views from nodes and checking consistency")
-	if view, err = TestViewsConsistent(view2Addrs, v2); err != nil {
+	if _, err = TestViewsConsistent(view2Addrs, v2); err != nil {
 		log.Warnf("get view failed: %v", err)
 	} else {
 		score += 10
