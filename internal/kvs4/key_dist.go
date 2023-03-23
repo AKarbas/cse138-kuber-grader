@@ -245,7 +245,7 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 	if success {
 		score += 20
 		log.WithField("score", score).Infof(
-			"score +10 - key movement (with <=%d%% deviation from optimal) successful", thresholdPercent,
+			"score +20 - key movement (with <=%d%% deviation from optimal) successful", thresholdPercent,
 		)
 	}
 
