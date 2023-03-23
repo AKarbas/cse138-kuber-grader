@@ -10,7 +10,7 @@ import (
 	"github.com/AKarbas/cse138-kuber-grader/pkg/kvs4client"
 )
 
-const KeyDistMaxScore = 30
+const KeyDistMaxScore = 40
 const thresholdPercent = 20
 
 func KeyDistTest(c TestConfig, n1, numKeys int) int {
@@ -35,8 +35,9 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 			"6. expect number of keys in each shard to be within thresholdPercent% of numKeys/s1; " +
 			"7. put viewConfig2; " +
 			"8. get view from all nodes and expect consistency; " +
-			"9. expect number of keys moved to be within thresholdPercent% of numKeys/s2. " +
-			"Steps 4, 6, 9 each have 10 points for a total of 30 (step 9 is extra credit).",
+			"9. expect number of keys in each shard to be within thresholdPercent% of numKeys/s2; " +
+			"10. expect number of keys moved to be within thresholdPercent% of numKeys/s2. " +
+			"Steps 4, 6, 9, 10 each have 10 points for a total of 40 (step 10 is extra credit).",
 	)
 
 	k8sClient := k8s.Client{}
@@ -127,6 +128,9 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 		log.Errorf("failed to map nodes to keys: %v", err)
 		return score
 	}
+
+	// Check key dist 1
+	log.Info("checking key distribution among shards")
 	var counts []float64
 	var sum float64 = 0.0
 	for _, ks := range shardKeys1 {
@@ -186,6 +190,29 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 		return score
 	}
 
+	// Check key dist 2
+	log.Info("checking key distribution among shards")
+	counts = make([]float64, 0)
+	sum = 0.0
+	for _, ks := range shardKeys2 {
+		counts = append(counts, float64(len(ks)))
+		sum += float64(len(ks))
+	}
+	avg = sum / float64(len(counts))
+
+	for idx, count := range counts {
+		diff := math.Abs(count - avg)
+		if (diff / avg) > (float64(thresholdPercent) / 100) {
+			log.Errorf("bad key distribution among shards; shardCounts=%v, avg=%.2f, errorIndex=%d", counts, avg, idx)
+			return score
+		}
+	}
+	score += 10
+	log.WithField("score", score).Infof(
+		"score +10 - key distribution (with <=%d%% deviation from optimal) successful", thresholdPercent,
+	)
+
+	log.Info("checking key movement during reshard")
 	totalMovement := len(nodeKeys2[view2Addrs[v2.NumNodes-1]]) // added to last node
 	for node, ks1 := range nodeKeys1 {
 		ks2 := nodeKeys2[node]

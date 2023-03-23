@@ -98,9 +98,9 @@ func main() {
 		n1 := n1
 		tests = append(tests, Test{
 			Run:         func() int { return kvs4.KeyDistTest(conf, n1, 2000) },
-			Description: fmt.Sprintf("keyDistribution test with n1=%d, n2=%d (weight=3, extraCredit=1)", n1, n1+1),
+			Description: fmt.Sprintf("keyDistribution test with n1=%d, n2=%d (weight=4, extraCredit=1)", n1, n1+1),
 			MaxScore:    kvs4.KeyDistMaxScore,
-			Weight:      3,
+			Weight:      4,
 		})
 		extraCredit += 1
 	}
