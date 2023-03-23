@@ -200,9 +200,9 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 	}
 
 	totalMovement /= 2 // remove double-counting
-	bestMovement := 20000 / v2.NumShards
-	movementDiff := math.Abs(float64(totalMovement - bestMovement))
-	if (movementDiff / float64(bestMovement)) > (float64(thresholdPercent) / 100) {
+	bestMovement := numKeys / v2.NumShards
+	movementThreshold := float64(bestMovement) * (1 + (float64(thresholdPercent) / 100))
+	if float64(totalMovement) > movementThreshold {
 		log.Errorf("key movement more than %d%% of optimal movement; moved=%d, optimal=%d",
 			thresholdPercent, totalMovement, bestMovement)
 		return score
