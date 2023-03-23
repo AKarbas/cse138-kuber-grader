@@ -97,12 +97,13 @@ func main() {
 	for n1 := 6; n1 <= 7; n1++ {
 		n1 := n1
 		tests = append(tests, Test{
-			Run:         func() int { return kvs4.KeyDistTest(conf, n1, 2000) },
-			Description: fmt.Sprintf("keyDistribution test with n1=%d, n2=%d (weight=4, extraCredit=1)", n1, n1+1),
-			MaxScore:    kvs4.KeyDistMaxScore,
-			Weight:      4,
+			Run: func() int { return kvs4.KeyDistTest(conf, n1, 2000) },
+			Description: fmt.Sprintf("keyDistribution test with n1=%d, n2=%d (weight=5, extraCredit=%d)",
+				n1, n1+1, kvs4.KeyDistExtraCredits),
+			MaxScore: kvs4.KeyDistMaxScore,
+			Weight:   5,
 		})
-		extraCredit += 1
+		extraCredit += kvs4.KeyDistExtraCredits
 	}
 
 	log.Infof("running a total of %d tests", len(tests))

@@ -10,8 +10,9 @@ import (
 	"github.com/AKarbas/cse138-kuber-grader/pkg/kvs4client"
 )
 
-const KeyDistMaxScore = 40
-const thresholdPercent = 20
+const KeyDistExtraCredits = 2
+const KeyDistMaxScore = 50
+const thresholdPercent = 25
 
 func KeyDistTest(c TestConfig, n1, numKeys int) int {
 	log := logrus.New().WithFields(logrus.Fields{
@@ -37,7 +38,7 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 			"8. get view from all nodes and expect consistency; " +
 			"9. expect number of keys in each shard to be within thresholdPercent% of numKeys/s2; " +
 			"10. expect number of keys moved to be within thresholdPercent% of numKeys/s2. " +
-			"Steps 4, 6, 9, 10 each have 10 points for a total of 40 (step 10 is extra credit).",
+			"Steps 4, 6, 9 each have 10 points and step 10 has 20 for a total of 50 (step 10 is extra credit).",
 	)
 
 	k8sClient := k8s.Client{}
@@ -242,7 +243,7 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 		success = false
 	}
 	if success {
-		score += 10
+		score += 20
 		log.WithField("score", score).Infof(
 			"score +10 - key movement (with <=%d%% deviation from optimal) successful", thresholdPercent,
 		)
