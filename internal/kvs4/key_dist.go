@@ -239,7 +239,7 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 	movementThreshold := float64(bestMovement) * (1 + (float64(thresholdPercent) / 100))
 	if float64(totalMovement) > movementThreshold {
 		log.Warnf("key movement more than %d%% of optimal movement; moved=%d, optimal=%d",
-			thresholdPercent, totalMovement, bestMovement)
+			100+thresholdPercent, totalMovement, bestMovement)
 		success = false
 	}
 	if success {
