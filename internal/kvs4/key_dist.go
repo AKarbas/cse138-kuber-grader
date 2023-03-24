@@ -84,6 +84,9 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 	}
 	log.Info("put view 1 successful")
 
+	log.Info("sleeping for 10s (to let nodes set up the view)")
+	time.Sleep(10 * time.Second)
+
 	// GET view 1
 	log.Info("getting views from nodes and checking consistency")
 	var view1 kvs4client.ViewResp
@@ -171,6 +174,9 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 		return score
 	}
 	log.Info("put view 2 successful")
+
+	log.Info("sleeping for 10s (to let nodes set up the view)")
+	time.Sleep(10 * time.Second)
 
 	// GET view 2
 	log.Info("getting views from nodes and checking consistency")
