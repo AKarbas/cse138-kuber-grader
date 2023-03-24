@@ -20,7 +20,7 @@ type ViewResp struct {
 }
 
 type ViewRespShard struct {
-	ShardId string   `json:"shard_id"`
+	ShardId int64    `json:"shard_id"`
 	Nodes   []string `json:"nodes"`
 }
 

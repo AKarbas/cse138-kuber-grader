@@ -13,7 +13,7 @@ type CausalMetadata = kvs3client.CausalMetadata
 type BaseBody = kvs3client.BaseBody
 type KeyListBody struct {
 	kvs3client.KeyListBody
-	ShardId string `json:"shard_id"`
+	ShardId int64 `json:"shard_id"`
 }
 
 var PutKeyVal = kvs3client.PutKeyVal

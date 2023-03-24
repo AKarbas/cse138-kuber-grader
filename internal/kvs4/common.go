@@ -235,10 +235,10 @@ func GenPartitions(v kvs4client.ViewResp) [][]string {
 	return res
 }
 
-func TestKeyLists(addresses []string, minI, maxI int) (map[string]map[string]struct{}, error) {
-	shardKeys := make(map[string]map[string]struct{})
+func TestKeyLists(addresses []string, minI, maxI int) (map[int64]map[string]struct{}, error) {
+	shardKeys := make(map[int64]map[string]struct{})
 	exists := struct{}{}
-	shardCounts := make(map[string]int)
+	shardCounts := make(map[int64]int)
 	for idx, addr := range addresses {
 		res, statusCode, err := kvs4client.GetKeyList(addr, nil)
 		if err != nil {
@@ -265,11 +265,11 @@ func TestKeyLists(addresses []string, minI, maxI int) (map[string]map[string]str
 			continue
 		}
 		if res.Count != shardCounts[res.ShardId] {
-			return nil, fmt.Errorf("number of keys in shard inconsistent across nodes (got=%d, expected=%d, shardId=%s)",
+			return nil, fmt.Errorf("number of keys in shard inconsistent across nodes (got=%d, expected=%d, shardId=%d)",
 				res.Count, shardCounts[res.ShardId], res.ShardId)
 		}
 		if !reflect.DeepEqual(keySet, prevKeys) {
-			return nil, fmt.Errorf("keys in shard inconsistent across nodes (shardId=%s)", res.ShardId)
+			return nil, fmt.Errorf("keys in shard inconsistent across nodes (shardId=%d)", res.ShardId)
 		}
 	}
 
@@ -297,7 +297,7 @@ func TestKeyLists(addresses []string, minI, maxI int) (map[string]map[string]str
 }
 
 func NodeKeySets(
-	shardKeySets map[string]map[string]struct{}, view kvs4client.ViewResp,
+	shardKeySets map[int64]map[string]struct{}, view kvs4client.ViewResp,
 ) (map[string]map[string]struct{}, error) {
 	res := make(map[string]map[string]struct{})
 	for _, shard := range view.View {
@@ -305,7 +305,7 @@ func NodeKeySets(
 			var ok bool
 			res[node], ok = shardKeySets[shard.ShardId]
 			if !ok {
-				return nil, fmt.Errorf("shardId (%s) not found in shardKeyLists, view=%+v", shard.ShardId, view)
+				return nil, fmt.Errorf("shardId (%d) not found in shardKeyLists, view=%+v", shard.ShardId, view)
 			}
 		}
 	}
