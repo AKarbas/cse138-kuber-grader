@@ -1,8 +1,10 @@
 package k8s
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"sort"
 	"time"
 
@@ -205,4 +207,33 @@ func (c *Client) AwaitDeletion(ns string, labels map[string]string) error {
 			return nil
 		}
 	}
+}
+
+func (c *Client) GetPodLogs(ns string, labels map[string]string) ([]string, error) {
+	pods, err := c.ListPods(ns, labels)
+	if err != nil {
+		return nil, err
+	}
+	var res []string
+	for _, pod := range pods.Items {
+		podLogOpts := v1.PodLogOptions{}
+		logs := c.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOpts)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		podLogs, err := logs.Stream(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error in opening log stream: %w", err)
+		}
+		defer podLogs.Close()
+
+		buf := new(bytes.Buffer)
+		_, err = io.Copy(buf, podLogs)
+		if err != nil {
+			return nil, fmt.Errorf("error in copying pod log stream to buf: %w", err)
+		}
+		str := buf.String()
+
+		res = append(res, str)
+	}
+	return res, nil
 }
