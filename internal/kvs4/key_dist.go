@@ -44,6 +44,7 @@ func KeyDistTest(c TestConfig, n1, numKeys int) int {
 	k8sClient := k8s.Client{}
 	score := 0
 	defer func() {
+		log.Info("Here are your process logs (for finding what went wrong...)")
 		logs, err := k8sClient.GetPodLogs(c.Namespace, k8s.GroupLabels(c.GroupName))
 		if err != nil {
 			log.Errorf("failed to get pods' logs: %v", err)
