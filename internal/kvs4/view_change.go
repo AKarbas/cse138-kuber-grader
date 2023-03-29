@@ -39,17 +39,6 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 
 	k8sClient := k8s.Client{}
 	score := 0
-	defer func() {
-		log.Info("Here are your process logs (for finding what went wrong...)")
-		logs, err := k8sClient.GetPodLogs(c.Namespace, k8s.GroupLabels(c.GroupName))
-		if err != nil {
-			log.Errorf("failed to get pods' logs: %v", err)
-			return
-		}
-		for idx, l := range logs {
-			log.Infof("log idx=%d (indices not stable): %s", idx, l)
-		}
-	}()
 	defer func(s *int) {
 		log.WithField("finalScore", *s).Info("test completed.")
 	}(&score)
@@ -68,6 +57,17 @@ func ViewChangeTest(c TestConfig, v1, v2 ViewConfig, killNodes bool) int {
 		return score
 	}
 	defer PostTestCleanup(k8sClient, c.Namespace, c.GroupName)
+	defer func() {
+		log.Info("Here are your process logs (for finding what went wrong...)")
+		logs, err := k8sClient.GetPodLogs(c.Namespace, k8s.GroupLabels(c.GroupName))
+		if err != nil {
+			log.Errorf("failed to get pods' logs: %v", err)
+			return
+		}
+		for idx, l := range logs {
+			log.Infof("log idx=%d (indices not stable): %s", idx, l)
+		}
+	}()
 
 	log.Info("nodes created, sleeping for 10s (to let nodes start up)")
 	time.Sleep(10 * time.Second)
